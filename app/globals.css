@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+/* Lightwess Collection
+   Nuit violette, lumière de la marque (#8B5CF6), jaquettes qui éclairent l'écran.
+   Titres : Space Grotesk · Texte : Inter · Lettrage des jaquettes : Anton. */
+
+@theme {
+  --color-ink: #f4f3f8;
+  --color-ink2: #d7d4e4;
+  --color-mute: #a39fb6;
+  --color-faint: #77738a;
+  --color-night: #0b0a10;
+  --color-night2: #121019;
+  --color-card: #17151f;
+  --color-card2: #1e1b29;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-violet: #8b5cf6;
+  --color-violet-hi: #c7a4ff;
+  --color-violet-lo: #6b2fe0;
+  --color-ok: #3ddc97;
+  --color-no: #ff5c6c;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-poster: "Anton", Impact, sans-serif;
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@property --glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8b5cf6;
+}
+
+:root {
+  color-scheme: dark;
+  --glow: #8b5cf6;
+  transition: --glow 0.9s ease;
+}
+
+html,
+body {
+  background: var(--color-night);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-violet);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Lumière d'ambiance */
+.ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.ambient::before,
+.ambient::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+}
+.ambient::before {
+  width: 70vmax;
+  height: 55vmax;
+  left: 40%;
+  top: -10%;
+  background: var(--glow);
+  opacity: 0.22;
+}
+.ambient::after {
+  width: 40vmax;
+  height: 30vmax;
+  left: -10%;
+  bottom: -10%;
+  background: #6b2fe0;
+  opacity: 0.14;
+}
+
+/* Écran de lancement */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  animation: splash-out 0.7s ease 2.6s forwards;
+}
+html[data-nosplash] .splash {
+  display: none;
+}
+.splash-mark {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 32px);
+  opacity: 0;
+  animation: splash-in 1.1s var(--ease-out-soft) 0.25s forwards;
+}
+.splash-emblem {
+  width: clamp(64px, 12vw, 112px);
+  height: clamp(64px, 12vw, 112px);
+  filter: drop-shadow(0 0 30px rgb(139 92 246 / 0.55));
+  animation: splash-bolt 1.6s ease 0.6s both;
+}
+.splash-word {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 7vw, 76px);
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: #fff;
+}
+.splash-sub {
+  margin-top: 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(11px, 1.6vw, 17px);
+  letter-spacing: 0.7em;
+  color: #a99bd6;
+}
+.splash-line {
+  height: 2px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, transparent, #c7a4ff, transparent);
+  transform: scaleX(0);
+  animation: splash-line 1.2s var(--ease-out-soft) 0.9s forwards;
+}
+@keyframes splash-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes splash-bolt {
+  0%, 100% { filter: drop-shadow(0 0 30px rgb(139 92 246 / 0.55)); }
+  35% { filter: drop-shadow(0 0 60px rgb(199 164 255 / 0.95)) brightness(1.3); }
+}
+@keyframes splash-line {
+  to { transform: scaleX(1); }
+}
+@keyframes splash-out {
+  to { opacity: 0; visibility: hidden; }
+}
+
+.fade-up {
+  animation: fade-up 0.6s var(--ease-out-soft) both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001ms !important;
+  }
+  .splash { display: none; }
+}
