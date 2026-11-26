@@ -32,9 +32,10 @@ export default function Cover({ game, className = "", sizes, priority, fill, chi
           sizes={sizes}
           loading={priority ? "eager" : "lazy"}
           decoding="async"
+          draggable={false}
           onLoad={() => setLoaded(true)}
           onError={() => { setLoaded(false); setI((n) => n + 1); }}
-          className={`absolute inset-0 z-[1] h-full w-full object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+          className={`pointer-events-none absolute inset-0 z-[1] h-full w-full select-none object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
         />
       )}
       {children}

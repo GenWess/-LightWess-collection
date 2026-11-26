@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Connecte-toi d'abord." }, { status: 401 });
 
   try {
-    const body = (await req.json().catch(() => ({}))) as { profile?: string };
+    const body = (await req.json().catch(() => ({}))) as { profile?: string; appids?: number[]; status?: string };
+    const status = ["a_faire", "en_cours", "termine", "platine", "abandonne"].includes(body.status ?? "") ? body.status! : "a_faire";
     const { data: me } = await supabase.from("profiles").select("steam_id").eq("id", user.id).single();
     let steamId = me?.steam_id as string | null;
     if (body.profile) {
@@ -27,7 +28,9 @@ export async function POST(req: NextRequest) {
     }
     if (!steamId) throw new Error("Relie d'abord ton compte Steam ou colle le lien de ton profil.");
 
-    const owned = await ownedGames(steamId);
+    const all = await ownedGames(steamId);
+    const wanted = Array.isArray(body.appids) ? new Set(body.appids.map(Number)) : null;
+    const owned = wanted ? all.filter((g) => wanted.has(g.appid)) : all;
     if (!owned.length) return NextResponse.json({ found: 0, added: 0, updated: 0 });
 
     // 1. Fiches jeux (une par appid).
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     const toAdd = owned
       .filter((g) => ids.has(g.appid) && !have.has(ids.get(g.appid)!))
-      .map((g) => ({ user_id: user.id, game_id: ids.get(g.appid)!, status: "a_faire", playtime_hours: hours(g.playtime_forever), platform: "PC", source: "steam" }));
+      .map((g) => ({ user_id: user.id, game_id: ids.get(g.appid)!, status, playtime_hours: hours(g.playtime_forever), platform: "PC", source: "steam" }));
     for (let i = 0; i < toAdd.length; i += 400) {
       const { error } = await supabase.from("user_games").upsert(toAdd.slice(i, i + 400), { onConflict: "user_id,game_id", ignoreDuplicates: true });
       if (error) throw new Error(error.message);

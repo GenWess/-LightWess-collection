@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "motion/react";
 import Avatar from "@/components/Avatar";
 import { Stars } from "@/components/Stars";
 import { createClient } from "@/lib/supabase/client";
@@ -30,12 +31,18 @@ export function ReviewCard({ r, meId, showGame }: { r: ReviewRow & { game?: { id
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [shown, setShown] = useState(!r.has_spoilers);
-  const liked = r.likes.some((l) => l.user_id === meId);
+  const [liked, setLiked] = useState(r.likes.some((l) => l.user_id === meId));
+  const [likes, setLikes] = useState(r.likes.length);
 
   async function like() {
-    if (liked) await supabase.from("review_likes").delete().eq("user_game_id", r.id).eq("user_id", meId);
-    else { sfx.yes(); await supabase.from("review_likes").insert({ user_game_id: r.id, user_id: meId }); }
-    router.refresh();
+    // Optimiste : le cœur réagit tout de suite, la base suit.
+    const was = liked;
+    setLiked(!was); setLikes((n) => n + (was ? -1 : 1));
+    if (!was) sfx.yes();
+    const { error } = was
+      ? await supabase.from("review_likes").delete().eq("user_game_id", r.id).eq("user_id", meId)
+      : await supabase.from("review_likes").insert({ user_game_id: r.id, user_id: meId });
+    if (error) { setLiked(was); setLikes((n) => n + (was ? 1 : -1)); }
   }
   async function reply(e: React.FormEvent) {
     e.preventDefault();
@@ -66,7 +73,7 @@ export function ReviewCard({ r, meId, showGame }: { r: ReviewRow & { game?: { id
       <div className="mt-3 flex gap-1">
         <button onClick={like} data-nosound className={`flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold transition hover:bg-white/5 ${liked ? "text-no" : "text-mute"}`} aria-pressed={liked}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z" /></svg>
-          {r.likes.length || ""} J&apos;aime
+          <motion.span key={likes} initial={{ scale: 1.6 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="inline-block">{likes || ""}</motion.span> J&apos;aime
         </button>
         <button onClick={() => setOpen((o) => !o)} className="flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-mute transition hover:bg-white/5">
           {r.replies.length || ""} Répondre

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Splash from "@/components/Splash";
 import VisitTracker from "@/components/VisitTracker";
+import Toaster from "@/components/Toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="ambient" aria-hidden="true" />
         <div className="relative z-[1]">{children}</div>
         <VisitTracker />
+        <Toaster />
       </body>
     </html>
   );

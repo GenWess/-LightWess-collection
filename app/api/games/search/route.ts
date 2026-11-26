@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json({ results: [] });
 
   try {
-    const games = await igdb<IgdbGame[]>("games", `search "${esc(q)}"; ${GAME_FIELDS} where version_parent = null; limit 24;`);
+    const games = await igdb<IgdbGame[]>("games", `search "${esc(q)}"; ${GAME_FIELDS} where version_parent = null; limit 50;`);
     // Les jeux connus (beaucoup d'avis) et avec jaquette d'abord.
     games.sort((a, b) => Number(!!b.cover) - Number(!!a.cover) || (b.total_rating_count ?? 0) - (a.total_rating_count ?? 0));
     return NextResponse.json({ results: games.map(toGameRow) });

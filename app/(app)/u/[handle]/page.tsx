@@ -5,6 +5,8 @@ import Avatar from "@/components/Avatar";
 import FriendButton from "@/components/FriendButton";
 import GameTile from "@/components/GameTile";
 import TopFan from "@/components/TopFan";
+import ProfileStats from "@/components/ProfileStats";
+import CopyLink from "@/components/CopyLink";
 import { btnGhost, panel } from "@/components/ui";
 import { createClient, type Profile } from "@/lib/supabase/server";
 import { STATUSES, type Game, type UserGame } from "@/lib/types";
@@ -17,7 +19,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const fmtMonth = (d: string) => new Date(d).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
 export default async function ProfilePage({ params }: Props) {
   const { handle } = await params;
@@ -41,13 +42,6 @@ export default async function ProfilePage({ params }: Props) {
   const rows = (rowsData ?? []) as (UserGame & { game: Game })[];
 
   const done = rows.filter((r) => r.status === "termine" || r.status === "platine");
-  const rated = rows.filter((r) => r.rating != null);
-  const avg = rated.length ? rated.reduce((a, r) => a + Number(r.rating), 0) / rated.length : null;
-  const hours = rows.reduce((a, r) => a + Number(r.playtime_hours || 0), 0);
-  const year = new Date().getFullYear();
-  const doneYear = done.filter((r) => r.finished_on?.startsWith(String(year)));
-  const months = MONTHS.map((_, m) => doneYear.filter((r) => Number(r.finished_on!.slice(5, 7)) === m + 1).length);
-  const maxM = Math.max(1, ...months);
   const top: (Game | null)[] = [1, 2, 3, 4, 5].map((n) => rows.find((r) => r.top_rank === n)?.game ?? null);
   const playing = rows.filter((r) => r.status === "en_cours");
   const recent = done.slice().sort((a, b) => (b.finished_on ?? "").localeCompare(a.finished_on ?? "")).slice(0, 12);
@@ -69,25 +63,18 @@ export default async function ProfilePage({ params }: Props) {
           {p.bio && <p className="mt-2 max-w-[60ch] text-ink2">{p.bio}</p>}
         </div>
         <div className="sm:pb-1">
-          {isMe ? <Link href="/parametres" className={btnGhost}>Personnaliser</Link> : <FriendButton meId={user!.id} otherId={p.id} rel={rel as { id: string; status: string; requester_id: string } | null} />}
+          {isMe ? <div className="flex flex-wrap gap-2"><CopyLink handle={p.handle!} /><Link href="/parametres" className={btnGhost}>Personnaliser</Link></div> : <FriendButton meId={user!.id} otherId={p.id} rel={rel as { id: string; status: string; requester_id: string } | null} />}
         </div>
       </div>
 
       {canView ? (
         <>
-          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[[rows.length, "jeux dans la collection"], [done.length, "jeux terminés"], [avg == null ? "–" : avg.toFixed(1), "note moyenne"], [Math.round(hours), "heures de jeu"]].map(([n, l]) => (
-              <div key={String(l)} className={panel}>
-                <b className="block font-display text-[28px] leading-none">{n}</b>
-                <span className="mt-1 block text-[13px] text-mute">{l}</span>
-              </div>
-            ))}
-          </div>
+          <div className="mt-7"><ProfileStats rows={rows} /></div>
 
           {(isMe || top.some(Boolean)) && (
             <section className="mt-8">
-              <div className="flex items-baseline justify-between"><h2 className="text-xl font-bold">Top 5</h2>{isMe && <span className="text-xs text-mute">Choisis-le depuis la page d&apos;un jeu</span>}</div>
-              <TopFan games={top} mine={isMe} />
+              <h2 className="text-xl font-bold">Top 5</h2>
+              <TopFan games={top} mine={isMe} collection={isMe ? rows.map((r) => ({ game: r.game, status: r.status })) : []} />
             </section>
           )}
 
@@ -99,18 +86,6 @@ export default async function ProfilePage({ params }: Props) {
               ) : <p className="mt-2 text-mute">Aucun jeu terminé pour l&apos;instant.</p>}
             </section>
             <div className="flex flex-col gap-5">
-              <section className={panel}>
-                <h2 className="text-lg font-bold">Terminés en {year}</h2>
-                <div className="mt-4 grid h-28 grid-cols-12 items-end gap-1.5">
-                  {months.map((n, i) => (
-                    <div key={i} className="flex h-full flex-col items-center justify-end gap-1 text-[11px] text-mute" title={`${n} jeu(x)`}>
-                      <span>{n || ""}</span>
-                      <span className="block w-full rounded-t-md bg-violet" style={{ height: `${(n / maxM) * 75}%`, minHeight: 3 }} />
-                      <span>{MONTHS[i]}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
               <section className={panel}>
                 <h2 className="text-lg font-bold">En cours <span className="text-base font-normal text-mute">{playing.length}</span></h2>
                 <ul className="mt-2 flex flex-col">

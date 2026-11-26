@@ -74,6 +74,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
     leaving.current = true;
     const sx = dir === "right" ? 1 : -1;
     if (el) {
+      el.style.pointerEvents = "none";
       el.style.transition = "transform .45s cubic-bezier(.2,.8,.2,1), opacity .45s";
       el.style.transform = `translate(${sx * 700}px, 40px) rotate(${sx * 28}deg)`;
       el.style.opacity = "0";
@@ -122,9 +123,15 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     if (topRef.current) topRef.current.style.transition = "none";
   };
+  const raf = useRef(0);
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current; if (!d.on || !topRef.current) return;
     d.dx = e.clientX - d.x; d.dy = (e.clientY - d.y) * 0.35; d.moved = Math.max(d.moved, Math.abs(d.dx) + Math.abs(d.dy));
+    if (raf.current) return;
+    raf.current = requestAnimationFrame(() => { raf.current = 0; paint(); });
+  };
+  const paint = () => {
+    const d = drag.current; if (!topRef.current) return;
     topRef.current.style.transform = `translate(${d.dx}px, ${d.dy}px) rotate(${d.dx / 16}deg)`;
     const y = topRef.current.querySelector<HTMLElement>("[data-stamp=yes]"), n = topRef.current.querySelector<HTMLElement>("[data-stamp=no]");
     if (y) y.style.opacity = String(Math.max(0, Math.min(1, d.dx / 100)));
@@ -132,6 +139,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
   };
   const onUp = () => {
     const d = drag.current; if (!d.on) return; d.on = false;
+    if (raf.current) { cancelAnimationFrame(raf.current); raf.current = 0; }
     if (Math.abs(d.dx) > 110) return void swipe(d.dx > 0 ? "right" : "left");
     if (topRef.current) {
       topRef.current.style.transition = "transform .5s cubic-bezier(.2,.8,.2,1)";
@@ -161,7 +169,8 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
             return (
               <div key={c.key} ref={isTop ? topRef : undefined}
                 onPointerDown={isTop ? onDown : undefined} onPointerMove={isTop ? onMove : undefined} onPointerUp={isTop ? onUp : undefined} onPointerCancel={isTop ? onUp : undefined}
-                className="absolute inset-0 touch-none select-none"
+                onDragStart={(e) => e.preventDefault()}
+                className="absolute inset-0 touch-none select-none [-webkit-user-drag:none]"
                 style={{ zIndex: 10 - d, transform: isTop ? undefined : `translateY(${d * 20}px) scale(${1 - d * 0.06})`, transition: "transform .5s cubic-bezier(.2,.8,.2,1)", cursor: isTop ? "grab" : undefined }}
                 aria-hidden={!isTop}>
                 <CardView c={c} flipped={isTop && flipped} />

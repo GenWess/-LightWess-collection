@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
+import CopyLink from "@/components/CopyLink";
 import { btnGhost, btnPrimary, input, panel } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { sfx } from "@/lib/sound";
@@ -84,8 +85,14 @@ export default function FriendsView({ meId, myHandle, rows }: { meId: string; my
 
   return (
     <div className="fade-up">
-      <p className="text-sm font-semibold text-mute">Partage ton pseudo : @{myHandle}</p>
-      <h1 className="mb-6 text-[clamp(28px,4vw,40px)] font-bold">Amis</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-mute">Ton pseudo : @{myHandle}</p>
+          <h1 className="text-[clamp(28px,4vw,40px)] font-bold">Amis</h1>
+        </div>
+        <CopyLink handle={myHandle} />
+      </div>
+      <p className="-mt-3 mb-6 text-sm text-mute">Envoie ton lien d&apos;ami à tes potes : un clic et ils t&apos;ajoutent, même s&apos;ils n&apos;ont pas encore de compte.</p>
 
       <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
         <div className="flex flex-col gap-5">
