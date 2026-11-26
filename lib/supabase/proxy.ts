@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/u", "/parametres", "/onboarding", "/collection", "/amis", "/decouvrir", "/admin"];
+const PROTECTED = ["/u", "/parametres", "/onboarding", "/collection", "/amis", "/decouvrir", "/admin", "/fil", "/jeu"];
 const AUTH_PAGES = ["/connexion", "/inscription"];
 
 export async function updateSession(request: NextRequest) {
@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
     const { data: profile } = await supabase.from("profiles").select("handle").eq("id", user.id).maybeSingle();
     const handle = profile?.handle as string | null | undefined;
     if (!handle && path !== "/onboarding") return redirect("/onboarding");
-    if (handle && (AUTH_PAGES.includes(path) || path === "/" || path === "/onboarding")) return redirect(`/u/${handle}`);
+    if (handle && (AUTH_PAGES.includes(path) || path === "/" || path === "/onboarding")) return redirect("/decouvrir");
   }
 
   return response;

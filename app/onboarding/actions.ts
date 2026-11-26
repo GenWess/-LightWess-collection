@@ -15,7 +15,7 @@ export async function chooseHandle(_prev: { error: string }, form: FormData): Pr
   const { error } = await supabase.from("profiles").update({ handle, display_name: handle }).eq("id", user.id).is("handle", null);
   if (error) {
     if (error.code === "23505") return { error: `@${handle} est déjà pris.` };
-    return { error: "Impossible d'enregistrer ce @pseudo. Réessaie." };
+    return { error: `Impossible d'enregistrer ce @pseudo (${error.message}).` };
   }
-  redirect(`/u/${handle}`);
+  redirect("/decouvrir");
 }

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Choisis ton @pseudo" };
 export default async function Page() {
   const { user, profile } = await getSessionProfile();
   if (!user) redirect("/connexion");
-  if (profile?.handle) redirect(`/u/${profile.handle}`);
+  if (profile?.handle) redirect("/decouvrir");
   const wanted = (user.user_metadata?.handle as string | undefined) ?? "";
   return (
     <AuthShell
