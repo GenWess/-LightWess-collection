@@ -1,7 +1,43 @@
 import "server-only";
 
+/** Anciennes adresses d'images Steam (ne marchent plus pour beaucoup de jeux récents). */
 export const steamCover = (appid: number) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`;
 export const steamHeader = (appid: number) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
+export const isOldSteamUrl = (u: string | null | undefined) => !!u && /cdn\.cloudflare\.steamstatic\.com\/steam\/apps\//.test(u);
+
+const ASSET_BASE = "https://shared.akamai.steamstatic.com/store_item_assets/";
+export type SteamArt = { cover: string | null; banner: string | null; name?: string };
+
+/**
+ * Vraies adresses des images d'un jeu Steam.
+ * Depuis 2024, Steam range les images des nouveaux jeux dans des dossiers à code unique :
+ * on demande donc à Steam l'adresse exacte de la jaquette (format portrait) et de la bannière.
+ * Aucune clé n'est nécessaire. Jusqu'à 100 jeux par appel.
+ */
+export async function steamArt(appids: number[]): Promise<Map<number, SteamArt>> {
+  const out = new Map<number, SteamArt>();
+  const ids = [...new Set(appids.filter((n) => Number.isInteger(n) && n > 0))];
+  for (let i = 0; i < ids.length; i += 100) {
+    const input = { ids: ids.slice(i, i + 100).map((appid) => ({ appid })), context: { language: "french", country_code: "FR", steam_realm: 1 }, data_request: { include_assets: true } };
+    try {
+      const r = await fetch(`https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json=${encodeURIComponent(JSON.stringify(input))}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const j = await r.json();
+      for (const it of (j?.response?.store_items ?? []) as { appid?: number; id?: number; name?: string; assets?: Record<string, string> }[]) {
+        const appid = it.appid ?? it.id;
+        const a = it.assets;
+        if (!appid || !a?.asset_url_format) continue;
+        const url = (file?: string) => (file ? ASSET_BASE + a.asset_url_format.replace("${FILENAME}", file) : null);
+        out.set(appid, {
+          cover: url(a.library_capsule_2x || a.library_capsule),
+          banner: url(a.library_hero || a.header || a.main_capsule),
+          name: it.name,
+        });
+      }
+    } catch { /* Steam indisponible : on garde ce qu'on a */ }
+  }
+  return out;
+}
 
 const KEY = () => {
   // On nettoie la clé : un espace ou des guillemets collés par erreur dans Vercel suffisent à la casser.

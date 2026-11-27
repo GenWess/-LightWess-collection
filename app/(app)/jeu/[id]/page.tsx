@@ -8,6 +8,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import ReviewText from "@/components/ReviewText";
 import { frenchSummary } from "@/lib/summary-fr";
+import { repairSteamCovers } from "@/lib/steam-repair";
 import { CATEGORIES, STATUS_LABEL, genreFr, type Game, type MiniProfile, type UserGame } from "@/lib/types";
 import FoldEditor from "./FoldEditor";
 import GameEditor from "./GameEditor";
@@ -32,7 +33,9 @@ export default async function GamePage({ params, searchParams }: Props) {
 
   const { data: game } = await supabase.from("games").select("*").eq("id", id).maybeSingle();
   if (!game) notFound();
-  const g = game as Game;
+  let g = game as Game;
+  const fixed = await repairSteamCovers(supabase, [g]);
+  if (fixed.has(g.id)) g = { ...g, ...fixed.get(g.id) };
 
   const [{ data: mine }, { data: others }, { data: friends }, { data: tops }] = await Promise.all([
     supabase.from("user_games").select("*").eq("game_id", id).eq("user_id", user!.id).maybeSingle(),
@@ -58,7 +61,15 @@ export default async function GamePage({ params, searchParams }: Props) {
   const owners = rows.length + (mine ? 1 : 0);
   const friendsWithIt = rows.filter((r) => r.isFriend);
   // Arrivée depuis le profil d'un ami (?de=pseudo) : son avis passe en premier.
-  const focus = de ? rows.find((r) => r.profile.handle?.toLowerCase() === de.toLowerCase()) ?? null : null;
+  let focus = de ? rows.find((r) => r.profile.handle?.toLowerCase() === de.toLowerCase()) ?? null : null;
+  if (de && !focus) {
+    // Pas dans les 200 derniers avis chargés : on va chercher directement sa fiche pour ce jeu.
+    const { data: who } = await supabase.from("profiles").select("id,handle,display_name,avatar_url,accent_color").eq("handle", de.toLowerCase()).maybeSingle();
+    if (who && who.id !== user!.id) {
+      const { data: theirs } = await supabase.from("user_games").select("*").eq("user_id", who.id).eq("game_id", id).maybeSingle();
+      if (theirs) focus = { ...(theirs as UserGame), profile: who as MiniProfile, likes: [], replies: [], isFriend: friendIds.has(who.id) };
+    }
+  }
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
   // Résumé en français (Steam, sinon DeepL si configuré), enregistré une fois pour toutes.

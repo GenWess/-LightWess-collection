@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import MiniProfileHeader from "@/components/MiniProfileHeader";
 import { createClient, type Profile } from "@/lib/supabase/server";
 import type { Game, UserGame } from "@/lib/types";
+import { withFixedCovers } from "@/lib/steam-repair";
 import Journal, { type Entry } from "./Journal";
 
 type Props = { params: Promise<{ handle: string }>; searchParams: Promise<{ annee?: string }> };
@@ -24,9 +25,9 @@ export default async function JournalPage({ params, searchParams }: Props) {
   const { data: canView } = await supabase.rpc("can_view_collection", { owner: p.id });
 
   const { data: rowsData } = canView
-    ? await supabase.from("user_games").select("*, game:games(id,name,cover_url,banner_url,dominant_color,genres,release_year)").eq("user_id", p.id)
+    ? await supabase.from("user_games").select("*, game:games(id,name,cover_url,banner_url,dominant_color,genres,release_year,steam_appid)").eq("user_id", p.id)
     : { data: [] };
-  const rows = (rowsData ?? []) as (UserGame & { game: Game })[];
+  const rows = await withFixedCovers(supabase, (rowsData ?? []) as (UserGame & { game: Game })[]);
 
   // Chaque date saisie devient une entrée du journal (on se fie aux dates de fin/début, pas à la date d'ajout).
   const entries: Entry[] = [];

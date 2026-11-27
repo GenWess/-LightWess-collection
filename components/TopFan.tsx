@@ -9,7 +9,8 @@ import { extractColor, setGlow } from "./Glow";
 import { btnGhost } from "./ui";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
-import type { Game } from "@/lib/types";
+import type { Game, MiniProfile } from "@/lib/types";
+import { GamePeek, type PeekRow } from "./GamePeek";
 
 type Owned = { game: Game; status: string };
 
@@ -20,11 +21,12 @@ type Owned = { game: Game; status: string };
  *  - « choisir » (son propre profil) : toucher un emplacement ouvre la sélection, et toucher un jeu
  *    l'assigne immédiatement à cet emplacement, sans jamais quitter la page.
  */
-export default function TopFan({ games, mine, collection = [], from }: { from?: string; games: (Game | null)[]; mine: boolean; collection?: Owned[] }) {
+export default function TopFan({ games, mine, collection = [], peek }: { peek?: { owner: MiniProfile; rows: Record<string, PeekRow> }; games: (Game | null)[]; mine: boolean; collection?: Owned[] }) {
   const router = useRouter();
   const [top, setTop] = useState<(Game | null)[]>(games);
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState<number | null>(null);
+  const [peeking, setPeeking] = useState<PeekRow | null>(null);
   const slots = mine ? top : top.filter(Boolean);
   const n = slots.length;
   const [sel, setSel] = useState(() => Math.max(0, games.findIndex(Boolean)));
@@ -69,6 +71,7 @@ export default function TopFan({ games, mine, collection = [], from }: { from?: 
 
   return (
     <div>
+      {peek && <GamePeek row={peeking} owner={peek.owner} onClose={() => setPeeking(null)} />}
       {mine && (
         <div className="mb-1 flex justify-end">
           <motion.button whileTap={{ scale: 0.94 }} onClick={() => { setEditing((e) => !e); }} className={`${btnGhost} min-h-10 px-4 text-sm ${editing ? "border-violet bg-violet/20" : ""}`} aria-pressed={editing}>
@@ -91,7 +94,8 @@ export default function TopFan({ games, mine, collection = [], from }: { from?: 
           const onClick = () => {
             if (mine && (editing || !g)) { setPicking(i + 1); return; }
             if (o !== 0) { setSel(i); return; }
-            if (g) router.push(`/jeu/${g.id}${from ? `?de=${encodeURIComponent(from)}` : ""}`);
+            if (g && peek?.rows[g.id]) { setPeeking(peek.rows[g.id]); return; }
+            if (g) router.push(`/jeu/${g.id}`);
           };
           return (
             <motion.button

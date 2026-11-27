@@ -4,10 +4,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import GameTile from "./GameTile";
+import PeekTile from "./GamePeek";
 import { btnGhost, input } from "./ui";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
-import { STATUSES, genreFr, type Game, type Status, type UserGame } from "@/lib/types";
+import { STATUSES, genreFr, type Game, type MiniProfile, type Status, type UserGame } from "@/lib/types";
 
 type Row = UserGame & { game: Game };
 const fmt = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
@@ -31,7 +32,7 @@ const RATINGS = [{ v: 0, l: "Toutes les notes" }, { v: 4.5, l: "4,5 ★ et plus"
 const chip = (on: boolean) => `min-h-10 rounded-full border px-4 text-sm font-semibold transition ${on ? "border-transparent bg-ink text-night" : "border-white/15 text-ink2 hover:bg-white/5"}`;
 
 /** Grille de jeux avec recherche, statuts, tri et filtres (plateforme, année, note, genre). */
-export default function GameBrowser({ rows: all, searchLabel = "Chercher un jeu", emptyText, removable = false, from }: { rows: Row[]; searchLabel?: string; emptyText?: string; removable?: boolean; from?: string }) {
+export default function GameBrowser({ rows: all, searchLabel = "Chercher un jeu", emptyText, removable = false, peekOwner }: { rows: Row[]; searchLabel?: string; emptyText?: string; removable?: boolean; peekOwner?: MiniProfile }) {
   const router = useRouter();
   const [gone, setGone] = useState<Set<string>>(new Set());
   const rows = useMemo(() => all.filter((r) => !gone.has(r.id)), [all, gone]);
@@ -146,8 +147,8 @@ export default function GameBrowser({ rows: all, searchLabel = "Chercher un jeu"
                 <motion.div key={r.id} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
                   transition={{ type: "spring", stiffness: 380, damping: 32, delay: Math.min(i, 18) * 0.01 }}>
                   <div className="group/rm relative">
-                    <GameTile game={r.game} entry={r} from={from}
-                      sub={r.finished_on ? `Fini le ${fmt(r.finished_on)}` : r.playtime_hours ? `${r.playtime_hours} h jouées` : r.game.release_year ? String(r.game.release_year) : undefined} />
+                    {peekOwner ? <PeekTile row={r} owner={peekOwner} sub={r.finished_on ? `Fini le ${fmt(r.finished_on)}` : r.playtime_hours ? `${r.playtime_hours} h jouées` : r.game.release_year ? String(r.game.release_year) : undefined} /> : <GameTile game={r.game} entry={r}
+                      sub={r.finished_on ? `Fini le ${fmt(r.finished_on)}` : r.playtime_hours ? `${r.playtime_hours} h jouées` : r.game.release_year ? String(r.game.release_year) : undefined} />}
                     {removable && <RemoveButton name={r.game.name} onConfirm={() => remove(r)} />}
                   </div>
                 </motion.div>

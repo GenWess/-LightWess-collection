@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { GAME_FIELDS, igdb, timeToBeat, toGameRow, type IgdbGame } from "./igdb";
+import { steamArt } from "./steam";
 
 /**
  * Enregistre (ou retrouve) un jeu IGDB dans la table games, sans doublon :
@@ -14,6 +15,11 @@ export async function ensureIgdbGame(supabase: SupabaseClient, igdbId: number): 
   const [g] = await igdb<IgdbGame[]>("games", `${GAME_FIELDS} where id = ${igdbId};`);
   if (!g) throw new Error("Jeu introuvable sur IGDB.");
   const row = { ...toGameRow(g), avg_hours: await timeToBeat(g.id) };
+  // Jeu très récent sans jaquette sur IGDB : on prend celle de Steam.
+  if ((!row.cover_url || !row.banner_url) && row.steam_appid) {
+    const a = (await steamArt([row.steam_appid])).get(row.steam_appid);
+    if (a) { row.cover_url ??= a.cover; row.banner_url ??= a.banner; }
+  }
 
   if (row.steam_appid) {
     const { data: steamRow } = await supabase.from("games").select("id").eq("steam_appid", row.steam_appid).maybeSingle();

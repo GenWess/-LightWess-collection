@@ -9,9 +9,11 @@ import ProfileStats from "@/components/ProfileStats";
 import CopyLink from "@/components/CopyLink";
 import ProfileTabs from "@/components/ProfileTabs";
 import GameBrowser from "@/components/GameBrowser";
+import PeekTile from "@/components/GamePeek";
 import { panel } from "@/components/ui";
 import { badgesFor, nameClass, normalize } from "@/lib/ranking";
 import { createClient, type Profile } from "@/lib/supabase/server";
+import { withFixedCovers } from "@/lib/steam-repair";
 import { type Game, type UserGame } from "@/lib/types";
 
 type Props = { params: Promise<{ handle: string }> };
@@ -49,7 +51,7 @@ export default async function ProfilePage({ params }: Props) {
   const { data: rowsData } = canView
     ? await supabase.from("user_games").select("*, game:games(*)").eq("user_id", p.id).order("updated_at", { ascending: false })
     : { data: [] };
-  const rows = (rowsData ?? []) as (UserGame & { game: Game })[];
+  const rows = await withFixedCovers(supabase, (rowsData ?? []) as (UserGame & { game: Game })[]);
 
   const done = rows.filter((r) => r.status === "termine" || r.status === "platine");
   const top: (Game | null)[] = [1, 2, 3, 4, 5].map((n) => rows.find((r) => r.top_rank === n)?.game ?? null);
@@ -76,6 +78,9 @@ export default async function ProfilePage({ params }: Props) {
   // Sur le profil d'un ami, cliquer un jeu ouvre SON avis (?de=pseudo).
   const fromQ = isMe ? undefined : p.handle ?? undefined;
   const deQ = fromQ ? `?de=${encodeURIComponent(fromQ)}` : "";
+  const owner = { id: p.id, handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url, accent_color: p.accent_color };
+  // Sur le profil de quelqu'un d'autre, toucher un jeu ouvre SON avis directement (sans quitter le profil).
+  const tile = (r: UserGame & { game: Game }, key?: string) => (isMe ? <GameTile key={key} game={r.game} entry={r} /> : <PeekTile key={key} row={r} owner={owner} />);
 
   // Badges et pseudo coloré, d'après le classement du site.
   const { data: lb } = await supabase.rpc("leaderboard");
@@ -165,7 +170,7 @@ export default async function ProfilePage({ params }: Props) {
           {(isMe || top.some(Boolean)) && (
             <section className="mt-7">
               <h2 className="text-xl font-bold">Top 5</h2>
-              <TopFan from={fromQ} games={top} mine={isMe} collection={isMe ? rows.map((r) => ({ game: r.game, status: r.status })) : []} />
+              <TopFan peek={isMe ? undefined : { owner, rows: Object.fromEntries(rows.filter((r) => r.top_rank).map((r) => [r.game.id, r])) }} games={top} mine={isMe} collection={isMe ? rows.map((r) => ({ game: r.game, status: r.status })) : []} />
             </section>
           )}
 
@@ -174,7 +179,7 @@ export default async function ProfilePage({ params }: Props) {
               <h2 className="text-xl font-bold">{isMe ? "Mes jeux conseillés" : `${name} te conseille`}</h2>
               <p className="mb-3 text-sm text-mute">{isMe ? "Tes jeux les mieux notés, hors top 5." : "Ses jeux les mieux notés que tu n'as pas encore."}</p>
               <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2 pt-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:grid-cols-8">
-                {picks.map((r) => <div key={r.id} className="w-[30%] shrink-0 snap-start sm:w-auto"><GameTile game={r.game} entry={r} from={fromQ} /></div>)}
+                {picks.map((r) => <div key={r.id} className="w-[30%] shrink-0 snap-start sm:w-auto">{tile(r)}</div>)}
               </div>
             </section>
           )}
@@ -187,7 +192,7 @@ export default async function ProfilePage({ params }: Props) {
                 {flops.map((r, i) => (
                   <li key={r.id} className="relative w-[30%] shrink-0 snap-start sm:w-auto">
                     <span className="absolute -left-1 -top-1 z-10 grid h-8 w-8 place-items-center rounded-full border-2 border-night bg-no font-display text-sm font-bold text-white shadow-lg">{i + 1}</span>
-                    <div className="grayscale-[35%] transition hover:grayscale-0"><GameTile game={r.game} entry={r} from={fromQ} /></div>
+                    <div className="grayscale-[35%] transition hover:grayscale-0">{tile(r)}</div>
                   </li>
                 ))}
               </ol>
@@ -203,7 +208,7 @@ export default async function ProfilePage({ params }: Props) {
             <section className={panel}>
               <h2 className="text-lg font-bold">Terminés récemment</h2>
               {recent.length ? (
-                <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">{recent.map((r) => <GameTile key={r.id} game={r.game} entry={r} from={fromQ} />)}</div>
+                <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">{recent.map((r) => tile(r, r.id))}</div>
               ) : <p className="mt-2 text-mute">Aucun jeu terminé pour l&apos;instant.</p>}
             </section>
             <div className="flex flex-col gap-5">
@@ -222,7 +227,7 @@ export default async function ProfilePage({ params }: Props) {
           <section className="mt-8">
             <h2 className="mb-3 text-xl font-bold">Collection <span className="text-base font-normal text-mute">{rows.length}</span></h2>
             {rows.length ? (
-              <GameBrowser rows={rows} removable={isMe} from={fromQ} searchLabel={isMe ? "Chercher dans ma collection" : `Chercher dans la collection de ${name}`} />
+              <GameBrowser rows={rows} removable={isMe} peekOwner={isMe ? undefined : owner} searchLabel={isMe ? "Chercher dans ma collection" : `Chercher dans la collection de ${name}`} />
             ) : <p className="rounded-3xl border border-line bg-card/70 p-6 text-mute">{isMe ? "Ta collection est vide. Ajoute un jeu depuis « Ma collection »." : `@${p.handle} n'a encore ajouté aucun jeu.`}</p>}
           </section>
         </>
