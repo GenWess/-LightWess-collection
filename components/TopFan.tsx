@@ -8,7 +8,6 @@ import Cover from "./Cover";
 import { extractColor, setGlow } from "./Glow";
 import { btnGhost } from "./ui";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
 import { toast } from "@/lib/toast";
 import type { Game } from "@/lib/types";
 
@@ -21,7 +20,7 @@ type Owned = { game: Game; status: string };
  *  - « choisir » (son propre profil) : toucher un emplacement ouvre la sélection, et toucher un jeu
  *    l'assigne immédiatement à cet emplacement, sans jamais quitter la page.
  */
-export default function TopFan({ games, mine, collection = [] }: { games: (Game | null)[]; mine: boolean; collection?: Owned[] }) {
+export default function TopFan({ games, mine, collection = [], from }: { from?: string; games: (Game | null)[]; mine: boolean; collection?: Owned[] }) {
   const router = useRouter();
   const [top, setTop] = useState<(Game | null)[]>(games);
   const [editing, setEditing] = useState(false);
@@ -49,7 +48,6 @@ export default function TopFan({ games, mine, collection = [] }: { games: (Game 
     setTop((t) => t.map((x, i) => (i === rank - 1 ? game : x && game && x.id === game.id ? null : x)));
     setPicking(null);
     setSel(rank - 1);
-    sfx.match();
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -60,20 +58,20 @@ export default function TopFan({ games, mine, collection = [] }: { games: (Game 
       const r3 = await supabase.from("user_games").update({ top_rank: rank }).eq("user_id", user.id).eq("game_id", game.id);
       err = r2.error || r3.error;
     }
-    if (err) { setTop(before); sfx.err(); toast("Impossible d'enregistrer ton top 5", "error"); return; }
+    if (err) { setTop(before); toast("Impossible d'enregistrer ton top 5", "error"); return; }
     toast(game ? `${game.name} est ton n°${rank}` : `Emplacement n°${rank} libéré`, "success");
     router.refresh();
   }
 
   if (!n) return null;
   const spread = w < 640 ? 62 : 118;
-  const move = (d: number) => { setSel((s) => (s + d + n) % n); sfx.flip(); };
+  const move = (d: number) => { setSel((s) => (s + d + n) % n); };
 
   return (
     <div>
       {mine && (
         <div className="mb-1 flex justify-end">
-          <motion.button whileTap={{ scale: 0.94 }} onClick={() => { setEditing((e) => !e); sfx.pop(); }} className={`${btnGhost} min-h-10 px-4 text-sm ${editing ? "border-violet bg-violet/20" : ""}`} aria-pressed={editing}>
+          <motion.button whileTap={{ scale: 0.94 }} onClick={() => { setEditing((e) => !e); }} className={`${btnGhost} min-h-10 px-4 text-sm ${editing ? "border-violet bg-violet/20" : ""}`} aria-pressed={editing}>
             {editing ? "Terminé" : "Modifier mon top 5"}
           </motion.button>
         </div>
@@ -86,14 +84,14 @@ export default function TopFan({ games, mine, collection = [] }: { games: (Game 
         )}
       </AnimatePresence>
 
-      <div className="relative h-[300px] select-none sm:h-[350px]" data-nosound>
+      <div className="relative h-[300px] select-none sm:h-[350px]">
         <div aria-hidden="true" className="absolute bottom-8 left-1/2 h-1 w-56 -translate-x-1/2 rounded-full bg-violet-hi shadow-[0_0_28px_10px_var(--glow)] transition-shadow duration-700" />
         {slots.map((g, i) => {
           const o = i - sel, a = Math.abs(o);
           const onClick = () => {
-            if (mine && (editing || !g)) { setPicking(i + 1); sfx.pop(); return; }
-            if (o !== 0) { setSel(i); sfx.flip(); return; }
-            if (g) router.push(`/jeu/${g.id}`);
+            if (mine && (editing || !g)) { setPicking(i + 1); return; }
+            if (o !== 0) { setSel(i); return; }
+            if (g) router.push(`/jeu/${g.id}${from ? `?de=${encodeURIComponent(from)}` : ""}`);
           };
           return (
             <motion.button
@@ -162,7 +160,7 @@ function Picker({ rank, current, collection, onPick, onClose }: { rank: number; 
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher dans ta collection" aria-label="Chercher dans ta collection"
             className="min-h-12 w-full rounded-2xl border border-white/15 bg-night px-4 text-base focus:border-violet focus:outline-none" />
         </div>
-        <div className="grid grid-cols-3 gap-3 overflow-y-auto p-4 pt-2 sm:grid-cols-5">
+        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-3 content-start gap-3 overflow-y-auto overscroll-contain p-4 pt-3 sm:grid-cols-5">
           {current && (
             <button onClick={() => onPick(null)} className="grid aspect-[3/4] place-items-center rounded-2xl border-2 border-dashed border-no/50 p-2 text-center text-sm font-semibold text-no">Vider cet emplacement</button>
           )}

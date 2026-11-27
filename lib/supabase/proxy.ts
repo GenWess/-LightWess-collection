@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/u", "/parametres", "/onboarding", "/collection", "/amis", "/decouvrir", "/admin", "/fil", "/jeu", "/groupes"];
+const PROTECTED = ["/u", "/parametres", "/onboarding", "/collection", "/amis", "/decouvrir", "/admin", "/fil", "/jeu", "/groupes", "/classement", "/accueil", "/explorer", "/listes"];
 const AUTH_PAGES = ["/connexion", "/inscription"];
 
 export async function updateSession(request: NextRequest) {
@@ -47,7 +47,7 @@ export async function updateSession(request: NextRequest) {
     if (!handle && path !== "/onboarding") return redirect("/onboarding");
     if (handle && (AUTH_PAGES.includes(path) || path === "/" || path === "/onboarding")) {
       const next = request.nextUrl.searchParams.get("next");
-      return redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/decouvrir");
+      return redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/accueil");
     }
   }
 

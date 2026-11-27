@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
+import BannerPicker from "@/components/BannerPicker";
 import { btnDanger, btnGhost, btnPrimary, input, label, panel } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/supabase/server";
@@ -19,6 +20,16 @@ async function resize(file: File, w: number, h: number): Promise<Blob> {
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Image illisible"))), "image/webp", 0.88));
 }
 
+/** Réduit une image SANS la couper (pour la bannière : on choisit ensuite la partie visible). */
+async function shrink(file: File, max: number): Promise<Blob> {
+  const img = await createImageBitmap(file);
+  const s = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Image illisible"))), "image/webp", 0.88));
+}
+
 export default function SettingsForm({ profile }: { profile: Profile }) {
   const router = useRouter();
   const [p, setP] = useState(profile);
@@ -31,7 +42,7 @@ export default function SettingsForm({ profile }: { profile: Profile }) {
     setBusy(true); setMsg("");
     const { error } = await supabase.from("profiles").update(patch).eq("id", p.id);
     setBusy(false);
-    if (error) return setMsg("Erreur : " + error.message);
+    if (error) return setMsg(/banner_pos/.test(error.message) ? "Il manque la mise à jour de la base : colle le fichier 004_mise_a_jour.sql dans Supabase → SQL Editor → Run." : "Erreur : " + error.message);
     setP((x) => ({ ...x, ...patch }));
     if (!quiet) setMsg("Enregistré ✓");
     router.refresh();
@@ -41,12 +52,13 @@ export default function SettingsForm({ profile }: { profile: Profile }) {
     if (!file) return;
     setBusy(true); setMsg("");
     try {
-      const blob = await resize(file, kind === "avatar" ? 320 : 1500, kind === "avatar" ? 320 : 500);
+      const blob = kind === "avatar" ? await resize(file, 320, 320) : await shrink(file, 2000);
       const path = `${p.id}/${kind}-${Date.now()}.webp`;
       const { error } = await supabase.storage.from("media").upload(path, blob, { contentType: "image/webp", upsert: true });
       if (error) throw error;
       const url = supabase.storage.from("media").getPublicUrl(path).data.publicUrl;
       await save(kind === "avatar" ? { avatar_url: url } : { banner_url: url });
+      if (kind === "banner") setMsg("Bannière envoyée ✓ Fais-la glisser pour choisir la partie visible.");
     } catch (e) {
       setBusy(false);
       setMsg("Erreur d'envoi : " + (e as Error).message);
@@ -76,7 +88,13 @@ export default function SettingsForm({ profile }: { profile: Profile }) {
         <div className="flex flex-col gap-1.5">
           <label htmlFor="ban" className={label}>Bannière</label>
           <input id="ban" type="file" accept="image/*" className="text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-3 file:py-2 file:font-semibold file:text-ink" onChange={(e) => upload(e.target.files?.[0], "banner")} />
-          {p.banner_url && <button type="button" className="self-start text-sm text-mute underline" onClick={() => save({ banner_url: null })}>Retirer la bannière</button>}
+          {p.banner_url && (
+            <>
+              <BannerPicker key={p.banner_url} url={p.banner_url} x={p.banner_pos_x ?? 50} y={p.banner_pos_y ?? 50} accent={p.accent_color || "#8b5cf6"} busy={busy}
+                onSave={(pos) => save(pos)} />
+              <button type="button" className="self-start text-sm text-mute underline" onClick={() => save({ banner_url: null })}>Retirer la bannière</button>
+            </>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="dn" className={label}>Nom affiché</label>

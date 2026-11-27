@@ -11,7 +11,8 @@ const SHORT = Object.fromEntries(STATUSES.map((s) => [s.key, s.short]));
  * Carte de jeu avec relief : elle s'incline vers la souris et un reflet de lumière glisse dessus.
  * (Sur téléphone et en « animations réduites », elle reste à plat.)
  */
-export default function GameTile({ game, entry, sub, onSelect, selected }: {
+export default function GameTile({ game, entry, sub, onSelect, selected, from }: {
+  from?: string;
   game: Game; entry?: Pick<UserGame, "status" | "rating"> | null; sub?: string;
   onSelect?: () => void; selected?: boolean;
 }) {
@@ -52,5 +53,5 @@ export default function GameTile({ game, entry, sub, onSelect, selected }: {
   // Mode « sélection » : un bouton, jamais un lien (aucune redirection possible).
   if (onSelect)
     return <button type="button" onClick={onSelect} aria-pressed={selected} className="block w-full min-w-0 text-left">{body}{caption}</button>;
-  return <Link href={`/jeu/${game.id}`} className="block min-w-0">{body}{caption}</Link>;
+  return <Link href={`/jeu/${game.id}${from ? `?de=${encodeURIComponent(from)}` : ""}`} className="block min-w-0">{body}{caption}</Link>;
 }

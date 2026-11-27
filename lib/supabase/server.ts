@@ -44,5 +44,7 @@ export type Profile = {
   collection_visibility: "public" | "friends" | "private";
   role: "user" | "admin";
   is_banned: boolean;
+  banner_pos_x?: number | null;
+  banner_pos_y?: number | null;
   created_at: string;
 };

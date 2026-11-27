@@ -9,7 +9,6 @@ import { Logo } from "./Logo";
 import { btnGhost, btnPrimary } from "./ui";
 import { createClient } from "@/lib/supabase/client";
 import { addFriend, forget, INVITE_KEY, JOIN_KEY, remember } from "@/lib/social";
-import { sfx } from "@/lib/sound";
 import { toast } from "@/lib/toast";
 
 type Friend = { kind: "friend"; id: string; handle: string; display_name: string | null; avatar_url: string | null; accent_color: string };
@@ -35,13 +34,11 @@ export default function InviteLanding({ target, meId, meHasHandle }: { target: F
     const supabase = createClient();
     if (isGroup) {
       const { data, error } = await supabase.rpc("join_group", { p_code: target.code });
-      if (error) { sfx.err(); toast(error.message, "error"); setState("idle"); return; }
-      sfx.match(); toast(`Bienvenue dans ${target.name} !`, "match");
+      if (error) { toast(error.message, "error"); setState("idle"); return; } toast(`Bienvenue dans ${target.name} !`, "match");
       router.push(`/groupes/${data}`);
     } else {
       const r = await addFriend(supabase, meId, target.id);
-      if (r === "error") { sfx.err(); toast("Impossible d'envoyer la demande.", "error"); setState("idle"); return; }
-      sfx.match();
+      if (r === "error") { toast("Impossible d'envoyer la demande.", "error"); setState("idle"); return; }
       toast(r === "accepted" ? `Tu es maintenant ami avec @${target.handle} 🎉` : r === "already" ? `Vous êtes déjà amis` : `Demande envoyée à @${target.handle}`, r === "accepted" ? "match" : "success");
       setState("done");
       setTimeout(() => router.push(`/u/${target.handle}`), 900);
@@ -76,7 +73,7 @@ export default function InviteLanding({ target, meId, meHasHandle }: { target: F
               <Link href="/amis" className={btnGhost}>Retour</Link>
             </>
           ) : meId && meHasHandle ? (
-            <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={accept} disabled={state !== "idle"} data-nosound className={`${btnPrimary} min-h-14 text-lg`}>
+            <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={accept} disabled={state !== "idle"} className={`${btnPrimary} min-h-14 text-lg`}>
               {state === "busy" ? "Un instant…" : state === "done" ? "C'est fait ✓" : isGroup ? "Rejoindre le groupe" : `Ajouter @${target.handle}`}
             </motion.button>
           ) : (

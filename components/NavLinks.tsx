@@ -12,6 +12,10 @@ const ICONS = {
   user: <svg {...s}><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>,
   gear: <svg {...s}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>,
   groups: <svg {...s}><circle cx="12" cy="7.5" r="3" /><circle cx="5" cy="10" r="2.2" /><circle cx="19" cy="10" r="2.2" /><path d="M7 20c.6-3.4 2.6-5.5 5-5.5s4.4 2.1 5 5.5M1.5 18c.4-2.2 1.6-3.6 3.4-3.8M22.5 18c-.4-2.2-1.6-3.6-3.4-3.8" /></svg>,
+  home: <svg {...s}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h5v-6h4v6h5V10" /></svg>,
+  search: <svg {...s}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>,
+  list: <svg {...s}><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth={3} /></svg>,
+  trophy: <svg {...s}><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.5a3 3 0 0 1-3.5 4M12 13v4M8 21h8M9.5 17h5" /></svg>,
   shield: <svg {...s}><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>,
 };
 

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { StarInput } from "@/components/Stars";
 import { btnDanger, btnPrimary, input, label } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
 import { CATEGORIES, PLATFORMS, STATUSES, type Status, type UserGame } from "@/lib/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -17,8 +16,11 @@ export default function GameEditor({ gameId, gameName, entry, topsUsed }: { game
   const [rating, setRating] = useState<number | null>(entry?.rating != null ? Number(entry.rating) : null);
   const [scores, setScores] = useState<Record<string, number>>(entry?.scores ?? {});
   const [difficulty, setDifficulty] = useState<number | null>(entry?.difficulty != null ? Number(entry.difficulty) : null);
-  const [review, setReview] = useState(entry?.review ?? "");
-  const [spoil, setSpoil] = useState(entry?.has_spoilers ?? false);
+  // Anciens avis entièrement « spoilers » : leur texte passe dans la partie floutée.
+  const legacy = !!entry?.has_spoilers && !entry?.spoiler_text;
+  const [review, setReview] = useState(legacy ? "" : entry?.review ?? "");
+  const [spoilerText, setSpoilerText] = useState(legacy ? entry?.review ?? "" : entry?.spoiler_text ?? "");
+  const [showSpoil, setShowSpoil] = useState(!!(legacy ? entry?.review : entry?.spoiler_text));
   const [started, setStarted] = useState(entry?.started_on ?? "");
   const [finished, setFinished] = useState(entry?.finished_on ?? "");
   const [hours, setHours] = useState(entry?.playtime_hours != null ? String(entry.playtime_hours) : "");
@@ -40,7 +42,7 @@ export default function GameEditor({ gameId, gameName, entry, topsUsed }: { game
   }
 
   async function save() {
-    if (!status) { sfx.err(); return setMsg("Choisis d'abord un statut."); }
+    if (!status) { return setMsg("Choisis d'abord un statut."); }
     setBusy(true); setMsg("");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -50,14 +52,13 @@ export default function GameEditor({ gameId, gameName, entry, topsUsed }: { game
     const row = {
       user_id: user.id, game_id: gameId, status,
       rating: rating ?? catAvg, scores, difficulty,
-      review: review.trim() || null, has_spoilers: spoil,
+      review: review.trim() || null, spoiler_text: spoilerText.trim() || null, has_spoilers: !!spoilerText.trim(),
       started_on: started || null, finished_on: finished || null,
       playtime_hours: hours ? Number(hours) : null, platform: platform || null, top_rank: top,
     };
     const { error } = await supabase.from("user_games").upsert(row, { onConflict: "user_id,game_id" });
     setBusy(false);
-    if (error) { sfx.err(); return setMsg("Erreur : " + error.message); }
-    sfx.match();
+    if (error) { return setMsg("Erreur : " + error.message); }
     setMsg("Enregistré ✓");
     router.refresh();
   }
@@ -66,7 +67,6 @@ export default function GameEditor({ gameId, gameName, entry, topsUsed }: { game
     if (!entry) return;
     setBusy(true);
     await supabase.from("user_games").delete().eq("id", entry.id);
-    sfx.no();
     router.push("/collection");
     router.refresh();
   }
@@ -120,8 +120,21 @@ export default function GameEditor({ gameId, gameName, entry, topsUsed }: { game
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="rv" className={label}>Mon avis</label>
-        <textarea id="rv" className={`${input} min-h-28 py-3`} maxLength={5000} value={review} onChange={(e) => setReview(e.target.value)} placeholder={`Ce que tu as pensé de ${gameName}…`} />
-        <label className="mt-1 flex items-center gap-2 text-sm text-ink2"><input type="checkbox" checked={spoil} onChange={(e) => setSpoil(e.target.checked)} className="h-5 w-5 accent-violet-500" /> Contient des spoilers (sera flouté pour les autres)</label>
+        <textarea id="rv" className={`${input} min-h-28 py-3`} maxLength={5000} value={review} onChange={(e) => setReview(e.target.value)} placeholder={`Ce que tu as pensé de ${gameName}, sans rien dévoiler…`} />
+        {showSpoil ? (
+          <div className="mt-2 flex flex-col gap-1.5 rounded-2xl border border-no/25 bg-no/[.05] p-3">
+            <label htmlFor="sp" className="flex items-center gap-1.5 text-[13px] font-semibold text-no/90">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z" /><path d="M12 10v4M12 17.5v.01" /></svg>
+              Partie avec spoilers <span className="font-normal text-mute">(floutée pour les autres, seulement cette partie)</span>
+            </label>
+            <textarea id="sp" className={`${input} min-h-24 py-3`} maxLength={5000} value={spoilerText} onChange={(e) => setSpoilerText(e.target.value)} placeholder="La fin, les révélations, les boss secrets…" />
+            {!spoilerText.trim() && <button type="button" onClick={() => setShowSpoil(false)} className="self-start text-xs text-mute hover:text-ink">Retirer cette partie</button>}
+          </div>
+        ) : (
+          <button type="button" onClick={() => setShowSpoil(true)} className="mt-1 flex items-center gap-1.5 self-start rounded-full border border-white/12 px-3 py-1.5 text-sm font-semibold text-ink2 transition hover:bg-white/5">
+            <span aria-hidden="true" className="text-base leading-none">+</span> Ajouter une partie avec spoilers
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -133,7 +146,7 @@ export default function GameEditor({ gameId, gameName, entry, topsUsed }: { game
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button className={btnPrimary} onClick={save} disabled={busy} data-nosound>{entry ? "Enregistrer" : "Ajouter à ma collection"}</button>
+        <button className={btnPrimary} onClick={save} disabled={busy}>{entry ? "Enregistrer" : "Ajouter à ma collection"}</button>
         {entry && <button className={btnDanger} onClick={remove} disabled={busy}>Retirer</button>}
         <span className="text-sm text-mute" aria-live="polite">{msg}</span>
       </div>

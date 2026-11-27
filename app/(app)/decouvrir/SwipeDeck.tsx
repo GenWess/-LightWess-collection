@@ -8,8 +8,7 @@ import { extractColor, setGlow } from "@/components/Glow";
 import { Stars } from "@/components/Stars";
 import { btnGhost, btnPrimary } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
-import { CATEGORIES, type Game, type MiniProfile, type Status } from "@/lib/types";
+import { CATEGORIES, genreFr, type Game, type MiniProfile, type Status } from "@/lib/types";
 
 type FriendView = { profile: MiniProfile; rating: number | null; review: string | null; status: Status; scores: Record<string, number> };
 type CardGame = Pick<Game, "name" | "cover_url" | "banner_url" | "release_year" | "genres" | "avg_hours" | "dominant_color"> & { id?: string };
@@ -80,7 +79,6 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
       el.style.opacity = "0";
       const st = el.querySelector<HTMLElement>(dir === "right" ? "[data-stamp=yes]" : "[data-stamp=no]"); if (st) st.style.opacity = "1";
     }
-    dir === "right" ? sfx.yes() : sfx.no();
     setTimeout(() => { setCards((cs) => cs.slice(1)); setFlipped(false); leaving.current = false; }, 420);
 
     try {
@@ -96,7 +94,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
         }
         if (gameId) await supabase.from("swipes").upsert({ user_id: user.id, game_id: gameId, direction: "right" });
         const mates = c.friends.filter((f) => f.status === "a_faire").map((f) => "@" + f.profile.handle);
-        if (mates.length) { sfx.match(); showToast(`C'est un match ! ${mates.join(", ")} ${mates.length > 1 ? "veulent" : "veut"} aussi y jouer`, true); }
+        if (mates.length) { showToast(`C'est un match ! ${mates.join(", ")} ${mates.length > 1 ? "veulent" : "veut"} aussi y jouer`, true); }
         else showToast(`${c.game.name} ajouté à « À faire »`);
       } else {
         if (c.gameId) await supabase.from("swipes").upsert({ user_id: user.id, game_id: c.gameId, direction: "left" });
@@ -105,7 +103,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
     } catch { /* l'animation est déjà partie : on ne bloque pas l'utilisateur */ }
   }, [cards, supabase]);
 
-  const flip = useCallback(() => { setFlipped((f) => !f); sfx.flip(); }, []);
+  const flip = useCallback(() => { setFlipped((f) => !f); }, []);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -190,7 +188,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
 
         {cards.length > 0 && (
           <>
-            <div className="mt-6 flex items-center gap-6" data-nosound>
+            <div className="mt-6 flex items-center gap-6">
               <button onClick={() => swipe("left")} aria-label="Pas pour moi" className="grid h-16 w-16 place-items-center rounded-full border border-white/15 bg-card text-no shadow-[0_12px_30px_-12px_#ff5c6c] transition active:scale-90">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
@@ -241,7 +239,7 @@ function CardView({ c, flipped }: { c: Card; flipped: boolean }) {
         <div data-stamp="no" className="pointer-events-none absolute right-4 top-16 z-[4] rotate-[12deg] rounded-xl border-[3px] border-no bg-black/30 px-3 py-1 font-display text-xl font-bold text-no opacity-0">PAS POUR MOI</div>
         <div className="absolute inset-x-0 bottom-0 z-[3] bg-gradient-to-b from-transparent via-black/85 to-black px-5 pb-5 pt-20 text-white">
           <div className="flex items-baseline justify-between gap-2"><h2 className="text-[26px] font-bold leading-tight">{c.game.name}</h2>{c.game.avg_hours ? <span className="shrink-0 text-xs text-white/70">≈ {Math.round(c.game.avg_hours)} h</span> : null}</div>
-          <p className="text-sm text-white/70">{[c.game.genres?.[0], c.game.release_year].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-white/70">{[c.game.genres?.[0] && genreFr(c.game.genres[0]), c.game.release_year].filter(Boolean).join(" · ")}</p>
           {score != null && <div className="mt-2 flex items-center gap-2 text-sm"><Stars value={score} /><b>{score.toFixed(1)}</b><span className="text-white/60">{friendAvg != null ? "amis" : "IGDB"}</span></div>}
           {best && <p className="mt-3 line-clamp-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-[13px] leading-snug">« {best.review} » <b>— @{best.profile.handle}</b></p>}
         </div>

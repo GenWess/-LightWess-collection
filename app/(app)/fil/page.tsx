@@ -47,7 +47,7 @@ export default async function Page() {
           <h2 className="mb-3 text-lg font-bold">Terminés récemment</h2>
           <div className="flex snap-x gap-4 overflow-x-auto pb-3">
             {finished.map((r) => (
-              <Link key={r.id} href={`/jeu/${r.game.id}`} className="w-32 shrink-0 snap-start">
+              <Link key={r.id} href={`/jeu/${r.game.id}?de=${r.profile.handle}`} className="w-32 shrink-0 snap-start">
                 <Cover game={r.game} className="[--cover-fs:32px]">
                   <span className="absolute bottom-2 left-2 z-[2] rounded-lg bg-black/70 px-2 py-0.5 text-[11px] font-bold text-white">@{r.profile.handle}</span>
                 </Cover>
@@ -60,13 +60,13 @@ export default async function Page() {
 
       <div className="flex max-w-3xl flex-col gap-3">
         {rows.map((r) =>
-          r.rating != null || r.review ? (
+          r.rating != null || r.review || r.spoiler_text ? (
             <ReviewCard key={r.id} r={{ ...r, isFriend: true } as ReviewRow & { game: { id: string; name: string } }} meId={user!.id} showGame />
           ) : (
             <div key={r.id} className="flex items-center gap-3 rounded-3xl border border-line bg-card/60 p-3 text-sm">
               <Avatar profile={r.profile} size={32} />
-              <p className="flex-1"><Link href={`/u/${r.profile.handle}`} className="font-semibold hover:underline">@{r.profile.handle}</Link> <span className="text-mute">{VERB[r.status]}</span> <Link href={`/jeu/${r.game.id}`} className="font-semibold hover:underline">{r.game.name}</Link></p>
-              <Link href={`/jeu/${r.game.id}`} className="w-10 shrink-0"><Cover game={r.game} className="rounded-lg [--cover-fs:10px]" /></Link>
+              <p className="flex-1"><Link href={`/u/${r.profile.handle}`} className="font-semibold hover:underline">@{r.profile.handle}</Link> <span className="text-mute">{VERB[r.status]}</span> <Link href={`/jeu/${r.game.id}?de=${r.profile.handle}`} className="font-semibold hover:underline">{r.game.name}</Link></p>
+              <Link href={`/jeu/${r.game.id}?de=${r.profile.handle}`} className="w-10 shrink-0"><Cover game={r.game} className="rounded-lg [--cover-fs:10px]" /></Link>
             </div>
           )
         )}

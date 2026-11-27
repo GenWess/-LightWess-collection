@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Cover from "./Cover";
 import { btnGhost, btnPrimary, input } from "./ui";
-import { sfx } from "@/lib/sound";
 import { toast } from "@/lib/toast";
 import { STATUSES, type Status } from "@/lib/types";
 
@@ -26,7 +25,7 @@ export default function ImportCenter({ steamId, label = "Importer mes jeux", cla
   const [open, setOpen] = useState(false);
   return (
     <>
-      <motion.button whileTap={{ scale: 0.95 }} className={className} onClick={() => { setOpen(true); sfx.pop(); }}>
+      <motion.button whileTap={{ scale: 0.95 }} className={className} onClick={() => { setOpen(true); }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>{label}
       </motion.button>
       <AnimatePresence>{open && <Dialog steamId={steamId} onClose={() => setOpen(false)} />}</AnimatePresence>
@@ -80,7 +79,7 @@ function Footer({ count, busy, status, setStatus, onGo, children }: { count: num
           {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
       </label>
-      <motion.button whileTap={{ scale: 0.95 }} className={`${btnPrimary} min-w-44`} disabled={!count || busy} onClick={onGo} data-nosound>
+      <motion.button whileTap={{ scale: 0.95 }} className={`${btnPrimary} min-w-44`} disabled={!count || busy} onClick={onGo}>
         {busy ? "Import…" : `Importer ${count} jeu${count > 1 ? "x" : ""}`}
       </motion.button>
     </div>
@@ -102,14 +101,13 @@ function SteamPane({ steamId, onDone }: { steamId: string | null; onDone: () => 
 
   async function load() {
     setLoading(true); setErr("");
-    const r = await fetch(`/api/steam/library${link.trim() ? `?profile=${encodeURIComponent(link.trim())}` : ""}`);
-    const j = await r.json().catch(() => ({ error: "Réponse illisible" }));
+    const r = await fetch(`/api/steam/library${link.trim() ? `?profile=${encodeURIComponent(link.trim())}` : ""}`).catch(() => null);
+    const j = r ? await r.json().catch(() => ({ error: `Le serveur a répondu avec une erreur (${r.status}). Réessaie dans un instant.` })) : { error: "Pas de connexion internet ?" };
     setLoading(false);
-    if (!r.ok) { sfx.err(); return setErr(j.error); }
+    if (!r || !r.ok) { return setErr(j.error || "Erreur inconnue"); }
     setGames(j.games);
     // Pré-cochés : les jeux auxquels tu as vraiment joué et qui ne sont pas déjà dans ta collection.
     setSel(new Set((j.games as SteamGame[]).filter((g) => !g.owned && g.hours >= 1).map((g) => g.appid)));
-    sfx.ok();
   }
   useEffect(() => { if (steamId) void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -125,12 +123,21 @@ function SteamPane({ steamId, onDone }: { steamId: string | null; onDone: () => 
 
   async function go() {
     setBusy(true);
-    const r = await fetch("/api/steam/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ appids: [...sel], status }) });
-    const j = await r.json().catch(() => ({ error: "Réponse illisible" }));
+    // Envoi par paquets de 150 jeux : une très grosse bibliothèque ne dépasse plus le temps limite du serveur.
+    const ids = [...sel];
+    let added = 0;
+    for (let i = 0; i < ids.length; i += 150) {
+      const r = await fetch("/api/steam/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ appids: ids.slice(i, i + 150), status }) }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({ error: `Le serveur a répondu avec une erreur (${r.status}).` })) : { error: "Pas de connexion internet ?" };
+      if (!r || !r.ok) {
+        setBusy(false);
+        if (added) router.refresh();
+        return toast(`${added ? `${added} jeux ajoutés, puis : ` : ""}${j.error || "Erreur inconnue"}`, "error");
+      }
+      added += j.added ?? 0;
+    }
     setBusy(false);
-    if (!r.ok) { sfx.err(); return toast(j.error, "error"); }
-    sfx.match();
-    toast(`${j.added} jeu${j.added > 1 ? "x" : ""} ajouté${j.added > 1 ? "s" : ""} à ta collection 🎮`, "match");
+    toast(added ? `${added} jeu${added > 1 ? "x" : ""} ajouté${added > 1 ? "s" : ""} à ta collection 🎮` : "Ces jeux étaient déjà dans ta collection (temps de jeu mis à jour)", "match");
     onDone(); router.refresh();
   }
 
@@ -145,7 +152,7 @@ function SteamPane({ steamId, onDone }: { steamId: string | null; onDone: () => 
             <p className="text-sm text-mute">{steamId ? "Ton compte Steam est relié. Tu peux aussi analyser un autre profil :" : "Ou colle le lien de ton profil Steam :"}</p>
             <div className="flex flex-wrap gap-2">
               <input className={`${input} flex-1 basis-64`} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://steamcommunity.com/id/tonpseudo" aria-label="Lien du profil Steam" />
-              <button className={btnPrimary} onClick={load} disabled={!steamId && !link.trim()} data-nosound>Analyser ma bibliothèque</button>
+              <button className={btnPrimary} onClick={load} disabled={!steamId && !link.trim()}>Analyser ma bibliothèque</button>
             </div>
             <p className="text-xs text-faint">Ton profil Steam et « Détails des jeux » doivent être en Public (Steam → Modifier le profil → Confidentialité).</p>
             {err && <p className="rounded-2xl bg-no/10 p-3 text-sm text-no">{err}</p>}
@@ -213,15 +220,13 @@ function ListPane({ tip, platform, onDone }: { tip: string; platform: string; on
     setLoading(false);
     setResults(j.results ?? []);
     setSel(new Set((j.results as Match[]).filter((m) => m.match).map((m) => m.match!.igdb_id)));
-    sfx.ok();
   }
   async function go() {
     setBusy(true);
     const r = await fetch("/api/games/add-many", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ igdbIds: [...sel], status, platform }) });
     const j = await r.json().catch(() => ({ error: "Réponse illisible" }));
     setBusy(false);
-    if (!r.ok) { sfx.err(); return toast(j.error, "error"); }
-    sfx.match();
+    if (!r.ok) { return toast(j.error, "error"); }
     toast(`${j.added} jeu${j.added > 1 ? "x" : ""} ajouté${j.added > 1 ? "s" : ""}${j.already ? ` · ${j.already} déjà présent${j.already > 1 ? "s" : ""}` : ""}`, "match");
     onDone(); router.refresh();
   }
@@ -234,7 +239,7 @@ function ListPane({ tip, platform, onDone }: { tip: string; platform: string; on
         <p className="text-xs text-faint">Cette plateforme ne permet pas à un site de lire ta bibliothèque : on retrouve chaque jeu automatiquement à partir de son nom, avec sa vraie jaquette, et tu choisis ensuite lesquels garder.</p>
         <textarea className={`${input} min-h-48 py-3`} value={text} onChange={(e) => setText(e.target.value)} placeholder={"Final Fantasy VII Rebirth\nAstro Bot\nThe Legend of Zelda: Tears of the Kingdom"} aria-label="Liste de tes jeux, un par ligne" />
         <div className="flex items-center gap-3">
-          <button className={btnPrimary} onClick={find} disabled={!text.trim() || loading} data-nosound>{loading ? "Recherche des jaquettes…" : "Trouver mes jeux"}</button>
+          <button className={btnPrimary} onClick={find} disabled={!text.trim() || loading}>{loading ? "Recherche des jaquettes…" : "Trouver mes jeux"}</button>
           <span className="text-xs text-faint">80 titres maximum à la fois</span>
         </div>
         {loading && <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">{Array.from({ length: 12 }, (_, i) => <div key={i} className="skeleton aspect-[3/4] rounded-xl" style={{ animationDelay: `${i * 50}ms` }} />)}</div>}

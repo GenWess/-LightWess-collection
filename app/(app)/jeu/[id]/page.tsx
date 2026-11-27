@@ -4,11 +4,16 @@ import Cover from "@/components/Cover";
 import Glow from "@/components/Glow";
 import { Stars } from "@/components/Stars";
 import { getSessionProfile } from "@/lib/supabase/server";
-import { CATEGORIES, type Game, type MiniProfile, type UserGame } from "@/lib/types";
+import Link from "next/link";
+import Avatar from "@/components/Avatar";
+import ReviewText from "@/components/ReviewText";
+import { frenchSummary } from "@/lib/summary-fr";
+import { CATEGORIES, STATUS_LABEL, genreFr, type Game, type MiniProfile, type UserGame } from "@/lib/types";
+import FoldEditor from "./FoldEditor";
 import GameEditor from "./GameEditor";
 import Reviews, { type ReviewRow } from "./Reviews";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ de?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -19,8 +24,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
-export default async function GamePage({ params }: Props) {
+export default async function GamePage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { de } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { supabase, user } = await getSessionProfile();
 
@@ -51,7 +57,21 @@ export default async function GamePage({ params }: Props) {
   const cats = CATEGORIES.map((c) => ({ ...c, v: avg(catSource.map((r) => r.scores?.[c.key]).filter((x): x is number => typeof x === "number")) }));
   const owners = rows.length + (mine ? 1 : 0);
   const friendsWithIt = rows.filter((r) => r.isFriend);
-  const reviews = rows.filter((r) => r.rating != null || r.review).sort((a, b) => Number(b.isFriend) - Number(a.isFriend));
+  // Arrivée depuis le profil d'un ami (?de=pseudo) : son avis passe en premier.
+  const focus = de ? rows.find((r) => r.profile.handle?.toLowerCase() === de.toLowerCase()) ?? null : null;
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+  // Résumé en français (Steam, sinon DeepL si configuré), enregistré une fois pour toutes.
+  let summaryFr = g.summary_fr ?? null;
+  if (!summaryFr) {
+    const fr = await frenchSummary(g);
+    if (fr) {
+      summaryFr = fr.text;
+      await supabase.from("games").update({ summary_fr: fr.text }).eq("id", g.id).then(() => null, () => null);
+    }
+  }
+
+  const reviews = rows.filter((r) => r.rating != null || r.review || r.spoiler_text).sort((a, b) => Number(b.isFriend) - Number(a.isFriend));
 
   return (
     <div className="fade-up">
@@ -65,7 +85,7 @@ export default async function GamePage({ params }: Props) {
         <div className="relative grid gap-6 p-5 sm:grid-cols-[180px_1fr] sm:items-end sm:p-8">
           <Cover game={g} className="w-36 shadow-2xl sm:w-full [--cover-fs:44px]" priority />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink2">{[g.release_year, g.genres.slice(0, 3).join(", ")].filter(Boolean).join(" · ")}</p>
+            <p className="text-sm font-semibold text-ink2">{[g.release_year, g.genres.slice(0, 3).map(genreFr).join(", ")].filter(Boolean).join(" · ")}</p>
             <h1 className="mt-1 text-balance text-[clamp(28px,4.5vw,46px)] font-bold leading-[1.05]">{g.name}</h1>
             <div className="mt-4 flex flex-wrap gap-x-7 gap-y-3">
               <div><b className="block font-display text-3xl text-violet-hi">{friendAvg?.toFixed(1) ?? "–"}</b><span className="text-xs text-mute">moyenne amis</span></div>
@@ -78,8 +98,48 @@ export default async function GamePage({ params }: Props) {
         </div>
       </section>
 
+      {focus && (
+        <section className="mt-6 rounded-3xl border p-5 sm:p-6" style={{ borderColor: (focus.profile.accent_color || "#8b5cf6") + "66", background: `linear-gradient(135deg, ${(focus.profile.accent_color || "#8b5cf6")}1f, transparent 60%), var(--color-card)` }}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={`/u/${focus.profile.handle}`} className="flex items-center gap-3">
+              <Avatar profile={focus.profile} size={48} />
+              <span><span className="block text-xs font-semibold uppercase tracking-wider text-mute">L&apos;avis de</span><b className="text-lg hover:underline">{focus.profile.display_name || `@${focus.profile.handle}`}</b></span>
+            </Link>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm font-semibold">{STATUS_LABEL[focus.status]}</span>
+            {focus.rating != null && <span className="ml-auto flex items-center gap-2"><Stars value={Number(focus.rating)} size={18} /><b className="font-display text-2xl">{Number(focus.rating).toFixed(1)}</b></span>}
+          </div>
+
+          <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {focus.playtime_hours != null && <div><dt className="text-xs text-mute">Temps de jeu</dt><dd className="font-semibold">{focus.playtime_hours} h</dd></div>}
+            {focus.difficulty != null && <div><dt className="text-xs text-mute">Difficulté</dt><dd className="font-semibold">{Number(focus.difficulty).toFixed(1)} / 5</dd></div>}
+            {focus.platform && <div><dt className="text-xs text-mute">Plateforme</dt><dd className="font-semibold">{focus.platform}</dd></div>}
+            {focus.started_on && <div><dt className="text-xs text-mute">Commencé le</dt><dd className="font-semibold">{fmtDate(focus.started_on)}</dd></div>}
+            {focus.finished_on && <div><dt className="text-xs text-mute">Terminé le</dt><dd className="font-semibold">{fmtDate(focus.finished_on)}</dd></div>}
+            {focus.top_rank && <div><dt className="text-xs text-mute">Son top 5</dt><dd className="font-semibold">N°{focus.top_rank}</dd></div>}
+          </dl>
+
+          {Object.keys(focus.scores ?? {}).length > 0 && (
+            <div className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              {CATEGORIES.filter((c) => typeof focus.scores?.[c.key] === "number").map((c) => (
+                <div key={c.key} className="grid grid-cols-[110px_1fr_30px] items-center gap-3 text-sm">
+                  <span className="text-mute">{c.label}</span>
+                  <span className="h-2 overflow-hidden rounded-full bg-white/8"><span className="block h-full rounded-full" style={{ width: `${(focus.scores[c.key] / 5) * 100}%`, background: focus.profile.accent_color || "#8b5cf6" }} /></span>
+                  <b className="text-right">{focus.scores[c.key].toFixed(1)}</b>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <ReviewText r={focus} className="mt-4 text-[15px]" />
+          {!focus.review && !focus.spoiler_text && focus.rating == null && <p className="mt-3 text-sm text-mute">Pas encore d&apos;avis écrit sur ce jeu.</p>}
+        </section>
+      )}
+      {de && !focus && <p className="mt-6 rounded-2xl border border-line bg-card/70 px-4 py-3 text-sm text-mute">@{de} n&apos;a pas ce jeu dans sa collection (ou elle n&apos;est pas visible pour toi).</p>}
+
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.25fr_1fr]">
-        <GameEditor gameId={g.id} gameName={g.name} entry={(mine as UserGame | null) ?? null} topsUsed={((tops ?? []) as { top_rank: number; game_id: string }[]).filter((t) => t.game_id !== g.id).map((t) => t.top_rank)} />
+        <FoldEditor folded={!!focus && !mine} gameName={g.name}>
+          <GameEditor gameId={g.id} gameName={g.name} entry={(mine as UserGame | null) ?? null} topsUsed={((tops ?? []) as { top_rank: number; game_id: string }[]).filter((t) => t.game_id !== g.id).map((t) => t.top_rank)} />
+        </FoldEditor>
 
         <div className="flex flex-col gap-6">
           <section className="rounded-3xl border border-line bg-card/80 p-5">
@@ -110,11 +170,11 @@ export default async function GamePage({ params }: Props) {
             </section>
           )}
 
-          {g.summary && (
+          {(summaryFr || g.summary) && (
             <section className="rounded-3xl border border-line bg-card/80 p-5">
               <h2 className="text-lg font-bold">Résumé</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink2">{g.summary}</p>
-              <p className="mt-2 text-[11px] text-faint">Résumé en anglais fourni par IGDB.com</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink2">{summaryFr || g.summary}</p>
+              {!summaryFr && <p className="mt-2 text-[11px] text-faint">Pas encore de résumé en français pour ce jeu : voici celui d&apos;IGDB.com, en anglais.</p>}
             </section>
           )}
         </div>

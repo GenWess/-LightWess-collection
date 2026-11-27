@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Cover from "./Cover";
 import { btnPrimary, input } from "./ui";
-import { sfx } from "@/lib/sound";
-import { STATUSES, type Status } from "@/lib/types";
+import { STATUSES, genreFr, type Status } from "@/lib/types";
 
 type Result = { igdb_id: number; name: string; cover_url: string | null; banner_url: string | null; release_year: number | null; genres: string[]; platforms: string[] };
 
@@ -14,7 +13,7 @@ export default function AddGame({ label = "Ajouter un jeu", className = btnPrima
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className={className} onClick={() => { setOpen(true); sfx.pop(); }}>
+      <button className={className} onClick={() => { setOpen(true); }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         {label}
       </button>
@@ -58,8 +57,7 @@ function SearchDialog({ onClose, owned }: { onClose: () => void; owned: Set<numb
     const r = await fetch("/api/games/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: picked.igdb_id, status }) });
     const j = await r.json();
     setBusy(false);
-    if (!r.ok) { sfx.err(); setMsg(j.error || "Erreur"); return; }
-    sfx.ok();
+    if (!r.ok) { setMsg(j.error || "Erreur"); return; }
     onClose();
     router.push(`/jeu/${j.gameId}`);
     router.refresh();
@@ -75,12 +73,12 @@ function SearchDialog({ onClose, owned }: { onClose: () => void; owned: Set<numb
         </div>
 
         {picked ? (
-          <div className="flex flex-col gap-4 overflow-y-auto p-5">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-5">
             <div className="flex gap-4">
               <Cover game={picked} className="w-28 shrink-0" />
               <div className="min-w-0">
                 <h2 className="text-2xl font-bold">{picked.name}</h2>
-                <p className="mt-1 text-sm text-mute">{[picked.release_year, picked.genres.slice(0, 2).join(", ")].filter(Boolean).join(" · ")}</p>
+                <p className="mt-1 text-sm text-mute">{[picked.release_year, picked.genres.slice(0, 2).map(genreFr).join(", ")].filter(Boolean).join(" · ")}</p>
                 <p className="mt-1 text-xs text-faint">{picked.platforms.slice(0, 6).join(" · ")}</p>
               </div>
             </div>
@@ -94,7 +92,7 @@ function SearchDialog({ onClose, owned }: { onClose: () => void; owned: Set<numb
             {msg && <p className="text-sm text-no">{msg}</p>}
           </div>
         ) : (
-          <div className="overflow-y-auto p-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 pt-3">
             {state === "loading" && <p className="p-4 text-sm text-mute">Recherche…</p>}
             {state === "error" && <p className="p-4 text-sm text-no">{msg}</p>}
             {state === "idle" && q.trim().length >= 2 && !results.length && <p className="p-4 text-sm text-mute">Aucun jeu trouvé pour « {q} ».</p>}
@@ -102,11 +100,11 @@ function SearchDialog({ onClose, owned }: { onClose: () => void; owned: Set<numb
             <ul>
               {results.map((g) => (
                 <li key={g.igdb_id}>
-                  <button className="grid w-full grid-cols-[52px_1fr_auto] items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-white/5" onClick={() => { setPicked(g); sfx.pop(); }}>
-                    <Cover game={g} className="w-[52px] rounded-lg [--cover-fs:14px]" />
+                  <button className="grid w-full grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-white/5" onClick={() => { setPicked(g); }}>
+                    <Cover game={g} className="w-[52px] shrink-0 rounded-lg [--cover-fs:14px]" />
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">{g.name}</span>
-                      <span className="block truncate text-xs text-mute">{[g.release_year, g.genres[0], g.platforms.slice(0, 3).join(", ")].filter(Boolean).join(" · ")}</span>
+                      <span className="block truncate text-xs text-mute">{[g.release_year, g.genres[0] && genreFr(g.genres[0]), g.platforms.slice(0, 3).join(", ")].filter(Boolean).join(" · ")}</span>
                     </span>
                     {owned.has(g.igdb_id) && <span className="rounded-full bg-ok/15 px-2 py-1 text-xs font-semibold text-ok">Déjà ajouté</span>}
                   </button>

@@ -7,7 +7,6 @@ import Avatar from "@/components/Avatar";
 import CopyLink from "@/components/CopyLink";
 import { btnGhost, btnPrimary, input, panel } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
 import type { MiniProfile } from "@/lib/types";
 
 export type Req = { id: string; status: "pending" | "accepted" | "declined"; created_at: string; requester_id: string; addressee_id: string };
@@ -60,26 +59,26 @@ export default function FriendsView({ meId, myHandle, rows }: { meId: string; my
     return () => { void supabase.removeChannel(ch); };
   }, [meId, router, supabase]);
 
-  async function act(key: string, fn: () => PromiseLike<{ error: { message: string; code?: string } | null }>, okSound: () => void, okMsg: string) {
+  async function act(key: string, fn: () => PromiseLike<{ error: { message: string; code?: string } | null }>, okMsg: string) {
     setBusy(key); setMsg("");
     const { error } = await fn();
     setBusy(null);
-    if (error) { sfx.err(); setMsg(error.code === "23505" ? "Une demande existe déjà entre vous." : "Erreur : " + error.message); return; }
-    okSound(); setMsg(okMsg); router.refresh();
+    if (error) { setMsg(error.code === "23505" ? "Une demande existe déjà entre vous." : "Erreur : " + error.message); return; }
+    setMsg(okMsg); router.refresh();
   }
 
-  const request = (p: MiniProfile) => act(p.id, () => supabase.from("friendships").insert({ requester_id: meId, addressee_id: p.id }), sfx.ok, `Demande envoyée à @${p.handle}`);
-  const answer = (r: Row, status: "accepted" | "declined") => act(r.id, () => supabase.from("friendships").update({ status }).eq("id", r.id), status === "accepted" ? sfx.match : sfx.no, status === "accepted" ? `Tu es maintenant ami avec @${other(r).handle} 🎉` : "Demande refusée");
-  const remove = (r: Row, txt: string) => act(r.id, () => supabase.from("friendships").delete().eq("id", r.id), sfx.no, txt);
+  const request = (p: MiniProfile) => act(p.id, () => supabase.from("friendships").insert({ requester_id: meId, addressee_id: p.id }), `Demande envoyée à @${p.handle}`);
+  const answer = (r: Row, status: "accepted" | "declined") => act(r.id, () => supabase.from("friendships").update({ status }).eq("id", r.id), status === "accepted" ? `Tu es maintenant ami avec @${other(r).handle} 🎉` : "Demande refusée");
+  const remove = (r: Row, txt: string) => act(r.id, () => supabase.from("friendships").delete().eq("id", r.id), txt);
 
   function actionFor(p: MiniProfile) {
     const r = relation.get(p.id);
     if (!r || r.status === "declined") {
       if (r && r.status === "declined") return <span className="text-sm text-faint">Indisponible</span>;
-      return <button className={`${btnPrimary} min-h-10 px-4 text-sm`} disabled={busy === p.id} onClick={() => request(p)} data-nosound>Ajouter</button>;
+      return <button className={`${btnPrimary} min-h-10 px-4 text-sm`} disabled={busy === p.id} onClick={() => request(p)}>Ajouter</button>;
     }
     if (r.status === "accepted") return <span className="rounded-full bg-ok/15 px-3 py-1.5 text-sm font-semibold text-ok">Ami</span>;
-    if (r.addressee_id === meId) return <button className={`${btnPrimary} min-h-10 px-4 text-sm`} onClick={() => answer(r, "accepted")} data-nosound>Accepter</button>;
+    if (r.addressee_id === meId) return <button className={`${btnPrimary} min-h-10 px-4 text-sm`} onClick={() => answer(r, "accepted")}>Accepter</button>;
     return <span className="text-sm text-mute">Demande envoyée</span>;
   }
 
@@ -127,8 +126,8 @@ export default function FriendsView({ meId, myHandle, rows }: { meId: string; my
             <div className="mt-2">
               {received.length ? received.map((r) => (
                 <Person key={r.id} p={r.requester}>
-                  <button className={`${btnPrimary} min-h-10 px-4 text-sm`} disabled={busy === r.id} onClick={() => answer(r, "accepted")} data-nosound>Accepter</button>
-                  <button className={`${btnGhost} min-h-10 px-3 text-sm`} disabled={busy === r.id} onClick={() => answer(r, "declined")} data-nosound>Refuser</button>
+                  <button className={`${btnPrimary} min-h-10 px-4 text-sm`} disabled={busy === r.id} onClick={() => answer(r, "accepted")}>Accepter</button>
+                  <button className={`${btnGhost} min-h-10 px-3 text-sm`} disabled={busy === r.id} onClick={() => answer(r, "declined")}>Refuser</button>
                 </Person>
               )) : <p className="p-2 text-sm text-mute">Aucune demande en attente.</p>}
             </div>

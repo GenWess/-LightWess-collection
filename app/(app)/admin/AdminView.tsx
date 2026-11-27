@@ -82,7 +82,7 @@ export default function AdminView({ stats, members, reviews, meId }: { stats: St
           <ul className="mt-2 flex flex-col gap-2">
             {reviews.map((r) => (
               <li key={r.id} className="flex items-start gap-3 rounded-xl bg-white/5 p-3 text-sm">
-                <div className="min-w-0 flex-1"><b>@{r.profile.handle}</b> sur <Link href={`/jeu/${r.game.id}`} className="font-semibold hover:underline">{r.game.name}</Link><p className="line-clamp-2 text-ink2">{r.review}</p></div>
+                <div className="min-w-0 flex-1"><b>@{r.profile.handle}</b> sur <Link href={`/jeu/${r.game.id}`} className="font-semibold hover:underline">{r.game.name}</Link><p className="line-clamp-2 text-ink2">{r.review || "(avis avec spoilers uniquement)"}</p></div>
                 <button className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-no hover:bg-no/10" onClick={() => run(supabase.from("user_games").update({ review: null }).eq("id", r.id), "Avis supprimé")}>Supprimer</button>
               </li>
             ))}

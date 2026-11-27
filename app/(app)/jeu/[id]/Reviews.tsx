@@ -6,8 +6,8 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import Avatar from "@/components/Avatar";
 import { Stars } from "@/components/Stars";
+import ReviewText from "@/components/ReviewText";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
 import type { MiniProfile, UserGame } from "@/lib/types";
 
 export type ReviewRow = UserGame & {
@@ -30,7 +30,6 @@ export function ReviewCard({ r, meId, showGame }: { r: ReviewRow & { game?: { id
   const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [shown, setShown] = useState(!r.has_spoilers);
   const [liked, setLiked] = useState(r.likes.some((l) => l.user_id === meId));
   const [likes, setLikes] = useState(r.likes.length);
 
@@ -38,7 +37,6 @@ export function ReviewCard({ r, meId, showGame }: { r: ReviewRow & { game?: { id
     // Optimiste : le cœur réagit tout de suite, la base suit.
     const was = liked;
     setLiked(!was); setLikes((n) => n + (was ? -1 : 1));
-    if (!was) sfx.yes();
     const { error } = was
       ? await supabase.from("review_likes").delete().eq("user_game_id", r.id).eq("user_id", meId)
       : await supabase.from("review_likes").insert({ user_game_id: r.id, user_id: meId });
@@ -48,7 +46,7 @@ export function ReviewCard({ r, meId, showGame }: { r: ReviewRow & { game?: { id
     e.preventDefault();
     if (!text.trim()) return;
     const { error } = await supabase.from("review_replies").insert({ user_game_id: r.id, user_id: meId, body: text.trim().slice(0, 1000) });
-    if (!error) { sfx.pop(); setText(""); router.refresh(); }
+    if (!error) { setText(""); router.refresh(); }
   }
   async function delReply(id: string) {
     await supabase.from("review_replies").delete().eq("id", id);
@@ -64,14 +62,9 @@ export function ReviewCard({ r, meId, showGame }: { r: ReviewRow & { game?: { id
         <span className="text-faint">· {ago(r.updated_at)}</span>
       </header>
       {r.rating != null && <div className="mt-2 flex items-center gap-2"><Stars value={Number(r.rating)} /><b>{Number(r.rating).toFixed(1)}</b>{r.difficulty != null && <span className="text-xs text-mute">· difficulté {Number(r.difficulty).toFixed(1)}/5</span>}</div>}
-      {r.review && (
-        <p onClick={() => setShown(true)} className={`mt-2 whitespace-pre-line text-ink2 transition ${shown ? "" : "cursor-pointer select-none blur-[6px]"}`} title={shown ? undefined : "Spoiler : clique pour lire"}>
-          {r.review}
-        </p>
-      )}
-      {!shown && <p className="mt-1 text-xs text-faint">Contient des spoilers. Clique sur le texte pour le lire.</p>}
+      <ReviewText r={r} className="mt-2" />
       <div className="mt-3 flex gap-1">
-        <button onClick={like} data-nosound className={`flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold transition hover:bg-white/5 ${liked ? "text-no" : "text-mute"}`} aria-pressed={liked}>
+        <button onClick={like} className={`flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold transition hover:bg-white/5 ${liked ? "text-no" : "text-mute"}`} aria-pressed={liked}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z" /></svg>
           <motion.span key={likes} initial={{ scale: 1.6 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="inline-block">{likes || ""}</motion.span> J&apos;aime
         </button>

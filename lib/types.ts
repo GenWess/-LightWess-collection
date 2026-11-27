@@ -10,6 +10,7 @@ export type Game = {
   genres: string[];
   platforms: string[];
   summary: string | null;
+  summary_fr?: string | null;
   avg_hours: number | null;
   dominant_color: string | null;
 };
@@ -26,6 +27,7 @@ export type UserGame = {
   difficulty: number | null;
   review: string | null;
   has_spoilers: boolean;
+  spoiler_text?: string | null;
   started_on: string | null;
   finished_on: string | null;
   playtime_hours: number | null;
@@ -69,3 +71,13 @@ export function colorFromText(s: string): string {
   for (const c of s) h = (h * 33 + c.charCodeAt(0)) % 360;
   return `hsl(${h} 70% 58%)`;
 }
+
+/** Genres IGDB (en anglais) → français. */
+const GENRES_FR: Record<string, string> = {
+  "Role-playing (RPG)": "RPG", "Adventure": "Aventure", "Shooter": "Tir", "Platform": "Plateforme", "Puzzle": "Réflexion",
+  "Racing": "Course", "Real Time Strategy (RTS)": "Stratégie temps réel", "Strategy": "Stratégie", "Simulator": "Simulation",
+  "Sport": "Sport", "Fighting": "Combat", "Hack and slash/Beat 'em up": "Beat'em all", "Turn-based strategy (TBS)": "Stratégie au tour par tour",
+  "Tactical": "Tactique", "Indie": "Indé", "Arcade": "Arcade", "Music": "Musique", "Visual Novel": "Visual novel",
+  "Card & Board Game": "Cartes et plateau", "MOBA": "MOBA", "Point-and-click": "Point & click", "Quiz/Trivia": "Quiz", "Pinball": "Flipper",
+};
+export const genreFr = (g: string) => GENRES_FR[g] ?? g;

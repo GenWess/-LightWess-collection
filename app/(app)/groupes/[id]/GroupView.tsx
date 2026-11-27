@@ -12,9 +12,8 @@ import { setGlow } from "@/components/Glow";
 import { Stars } from "@/components/Stars";
 import { btnDanger, btnGhost } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
 import { toast } from "@/lib/toast";
-import type { Game, MiniProfile, UserGame } from "@/lib/types";
+import { genreFr, type Game, type MiniProfile, type UserGame } from "@/lib/types";
 
 type Row = Pick<UserGame, "user_id" | "status" | "rating" | "scores" | "playtime_hours" | "finished_on" | "updated_at"> & { game: Pick<Game, "id" | "name" | "cover_url" | "banner_url" | "dominant_color" | "genres" | "release_year"> };
 type Member = { role: "owner" | "admin" | "member"; joined_at: string; profile: MiniProfile };
@@ -70,7 +69,7 @@ export default function GroupView({ data }: { data: GroupData }) {
 
   const genreCount = new Map<string, number>();
   data.rows.filter((r) => r.status === "termine" || r.status === "platine").forEach((r) => r.game.genres?.forEach((g) => genreCount.set(g, (genreCount.get(g) ?? 0) + 1)));
-  const genres = [...genreCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(([label, value], i) => ({ label, value, color: PAL[i] }));
+  const genres = [...genreCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(([label, value], i) => ({ label: genreFr(label), value, color: PAL[i] }));
 
   const compare = members.map((m) => ({ label: "@" + m.profile.handle, value: METRICS[metric].fn(byUser.get(m.profile.id) ?? []), extra: <Avatar profile={m.profile} size={22} />, color: m.profile.accent_color }))
     .sort((a, b) => b.value - a.value);
@@ -88,13 +87,11 @@ export default function GroupView({ data }: { data: GroupData }) {
 
   async function leave() {
     const { error } = await createClient().from("group_members").delete().eq("group_id", group.id).eq("user_id", meId);
-    if (error) return toast(error.message, "error");
-    sfx.no(); toast("Tu as quitté le groupe"); router.push("/groupes"); router.refresh();
+    if (error) return toast(error.message, "error"); toast("Tu as quitté le groupe"); router.push("/groupes"); router.refresh();
   }
   async function removeGroup() {
     const { error } = await createClient().from("groups").delete().eq("id", group.id);
-    if (error) return toast(error.message, "error");
-    sfx.no(); toast("Groupe supprimé"); router.push("/groupes"); router.refresh();
+    if (error) return toast(error.message, "error"); toast("Groupe supprimé"); router.push("/groupes"); router.refresh();
   }
   async function kick(uid: string, handle: string | null) {
     const { error } = await createClient().from("group_members").delete().eq("group_id", group.id).eq("user_id", uid);
@@ -103,8 +100,7 @@ export default function GroupView({ data }: { data: GroupData }) {
   }
   async function newCode() {
     const { error } = await createClient().rpc("regenerate_group_code", { gid: group.id });
-    if (error) return toast(error.message, "error");
-    sfx.ok(); toast("Nouveau lien créé : l'ancien ne marche plus", "success"); router.refresh();
+    if (error) return toast(error.message, "error"); toast("Nouveau lien créé : l'ancien ne marche plus", "success"); router.refresh();
   }
 
   const card = "rounded-3xl border border-line bg-card/80 p-5 backdrop-blur";
@@ -222,7 +218,7 @@ export default function GroupView({ data }: { data: GroupData }) {
                 {activity.map((r, i) => { const p = prof.get(r.user_id); return p ? (
                   <motion.li key={`${r.user_id}-${r.game.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="flex items-center gap-3 rounded-2xl border border-line bg-card/60 p-3 text-sm">
                     <Avatar profile={p} size={32} />
-                    <p className="min-w-0 flex-1"><Link href={`/u/${p.handle}`} className="font-semibold hover:underline">@{p.handle}</Link> <span className="text-mute">{VERB[r.status]}</span> <Link href={`/jeu/${r.game.id}`} className="font-semibold hover:underline">{r.game.name}</Link>{r.rating != null && <span className="text-[#FFD45C]"> · {Number(r.rating).toFixed(1)}★</span>}</p>
+                    <p className="min-w-0 flex-1"><Link href={`/u/${p.handle}`} className="font-semibold hover:underline">@{p.handle}</Link> <span className="text-mute">{VERB[r.status]}</span> <Link href={`/jeu/${r.game.id}?de=${p.handle}`} className="font-semibold hover:underline">{r.game.name}</Link>{r.rating != null && <span className="text-[#FFD45C]"> · {Number(r.rating).toFixed(1)}★</span>}</p>
                     <span className="shrink-0 text-xs text-faint">{ago(r.updated_at)}</span>
                     <Link href={`/jeu/${r.game.id}`} className="w-9 shrink-0"><Cover game={r.game} className="rounded-md [--cover-fs:9px]" /></Link>
                   </motion.li>

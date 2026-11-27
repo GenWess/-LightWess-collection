@@ -32,7 +32,7 @@ export default async function Page() {
       const liked = (r.rating != null && Number(r.rating) >= 3.5) || r.status === "en_cours" || r.status === "a_faire" || r.status === "platine";
       if (!liked && r.rating == null) continue;
       const c = byGame.get(r.game_id) ?? { key: r.game_id, gameId: r.game_id, igdbId: r.game.igdb_id, game: r.game, friends: [], source: "amis" as const };
-      c.friends.push({ profile: r.profile, rating: r.rating != null ? Number(r.rating) : null, review: r.has_spoilers ? null : r.review, status: r.status, scores: r.scores ?? {} });
+      c.friends.push({ profile: r.profile, rating: r.rating != null ? Number(r.rating) : null, review: r.has_spoilers && !r.spoiler_text ? null : r.review, status: r.status, scores: r.scores ?? {} });
       byGame.set(r.game_id, c);
     }
     const score = (c: Card) => {

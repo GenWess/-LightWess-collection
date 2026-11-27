@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Modération" };
 
 export default async function Page() {
   const { supabase, profile } = await getSessionProfile();
-  if (profile?.role !== "admin") redirect("/decouvrir");
+  if (profile?.role !== "admin") redirect("/accueil");
 
   const [{ data: stats, error }, { data: members }, { data: reviews }] = await Promise.all([
     supabase.rpc("admin_stats", { days: 30 }),

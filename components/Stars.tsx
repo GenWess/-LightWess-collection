@@ -1,6 +1,5 @@
 "use client";
 
-import { sfx } from "@/lib/sound";
 
 const PATH = "M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z";
 
@@ -28,14 +27,13 @@ export function Stars({ value, size = 15 }: { value: number | null; size?: numbe
 /** Saisie d'une note : un clic = étoile pleine, recliquer = demi-étoile, recliquer = pleine. */
 export function StarInput({ value, onChange, label, size = 28 }: { value: number | null; onChange: (v: number | null) => void; label: string; size?: number }) {
   return (
-    <span className="inline-flex" role="group" aria-label={label} data-nosound>
+    <span className="inline-flex" role="group" aria-label={label}>
       {[1, 2, 3, 4, 5].map((i) => {
         const fill = value == null ? 0 : value >= i ? 1 : value >= i - 0.5 ? 0.5 : 0;
         return (
           <button key={i} type="button" aria-label={`${label} : ${i} sur 5`} className="grid h-10 w-9 place-items-center transition active:scale-125"
             onClick={() => {
               const next = value === i ? i - 0.5 : i;
-              sfx.star(Math.ceil(next));
               onChange(next);
             }}>
             <Star fill={fill as 0 | 0.5 | 1} size={size} />

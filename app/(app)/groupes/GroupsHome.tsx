@@ -7,7 +7,6 @@ import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import { btnGhost, btnPrimary, input, label } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { sfx } from "@/lib/sound";
 import { toast } from "@/lib/toast";
 import type { MiniProfile } from "@/lib/types";
 
@@ -29,8 +28,7 @@ export default function GroupsHome({ groups }: { groups: GroupCard[] }) {
     setBusy(true);
     const { data, error } = await createClient().rpc("create_group", { p_name: name.trim(), p_description: desc.trim() || null, p_color: color });
     setBusy(false);
-    if (error) { sfx.err(); return toast(error.message, "error"); }
-    sfx.match(); toast(`Groupe « ${name.trim()} » créé !`, "match");
+    if (error) { return toast(error.message, "error"); } toast(`Groupe « ${name.trim()} » créé !`, "match");
     router.push(`/groupes/${data}`);
   }
 
@@ -41,8 +39,7 @@ export default function GroupsHome({ groups }: { groups: GroupCard[] }) {
     setBusy(true);
     const { data, error } = await createClient().rpc("join_group", { p_code: c });
     setBusy(false);
-    if (error) { sfx.err(); return toast("Code invalide ou expiré", "error"); }
-    sfx.match(); toast("Bienvenue dans le groupe !", "match");
+    if (error) { return toast("Code invalide ou expiré", "error"); } toast("Bienvenue dans le groupe !", "match");
     router.push(`/groupes/${data}`);
   }
 
@@ -74,7 +71,7 @@ export default function GroupsHome({ groups }: { groups: GroupCard[] }) {
                 <motion.div layout className="grid h-28 w-28 place-items-center rounded-[30px] font-display text-5xl font-bold text-white shadow-2xl" style={{ background: `linear-gradient(135deg, ${color}, #1a1426)` }} animate={{ rotate: [0, -4, 0] }} transition={{ duration: 0.5 }} key={color}>
                   {(name.trim()[0] ?? "?").toUpperCase()}
                 </motion.div>
-                <button className={btnPrimary} disabled={busy} data-nosound>{busy ? "Création…" : "Créer le groupe"}</button>
+                <button className={btnPrimary} disabled={busy}>{busy ? "Création…" : "Créer le groupe"}</button>
               </div>
             </div>
           </motion.form>
@@ -83,7 +80,7 @@ export default function GroupsHome({ groups }: { groups: GroupCard[] }) {
           <motion.form key="j" onSubmit={join} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="mb-6 flex flex-wrap gap-3 rounded-3xl border border-line bg-card/80 p-5">
               <input className={`${input} flex-1 basis-64`} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Colle le lien ou le code d'invitation" aria-label="Lien ou code d'invitation" />
-              <button className={btnPrimary} disabled={busy} data-nosound>Rejoindre</button>
+              <button className={btnPrimary} disabled={busy}>Rejoindre</button>
             </div>
           </motion.form>
         )}
