@@ -85,7 +85,7 @@ export default function Explorer({ owned, genres, platforms, initialQ, initialGe
   return (
     <div>
       {/* Barre de recherche */}
-      <div className="sticky top-[60px] z-10 -mx-4 bg-night/80 px-4 pb-3 pt-1 backdrop-blur-xl sm:mx-0 sm:rounded-3xl sm:px-0 lg:top-0">
+      <div className="sticky top-[var(--mh,0px)] z-10 -mx-4 bg-night/80 px-4 pb-3 pt-2 backdrop-blur-xl transition-[top] duration-300 sm:mx-0 sm:px-0 lg:top-0">
         <label className="relative block">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-mute" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Elden Ring, Zelda, Hades, Final Fantasy…" aria-label="Chercher un jeu"
@@ -104,7 +104,7 @@ export default function Explorer({ owned, genres, platforms, initialQ, initialGe
       </div>
 
       {/* Plateforme, période, tri */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2 max-sm:[&>select]:flex-1">
         <select value={platform} onChange={(e) => setPlatform(Number(e.target.value))} className={sel} aria-label="Plateforme">
           <option value={0}>Toutes les plateformes</option>
           {platforms.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -116,9 +116,9 @@ export default function Explorer({ owned, genres, platforms, initialQ, initialGe
 
         {!searching && (
           <LayoutGroup id="sort">
-            <div className="ml-auto flex rounded-full border border-white/10 bg-card p-1" role="tablist" aria-label="Trier">
+            <div className="no-scrollbar flex w-full overflow-x-auto rounded-full border border-white/10 bg-card p-1 sm:ml-auto sm:w-auto" role="tablist" aria-label="Trier">
               {SORTS.map((s) => (
-                <button key={s.key} role="tab" aria-selected={sort === s.key} onClick={() => setSort(s.key)} className="relative min-h-9 rounded-full px-3 text-sm font-semibold">
+                <button key={s.key} role="tab" aria-selected={sort === s.key} onClick={() => setSort(s.key)} className="relative min-h-9 flex-1 shrink-0 rounded-full px-3 text-sm font-semibold">
                   {sort === s.key && <motion.span layoutId="sort-pill" className="absolute inset-0 rounded-full bg-violet" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
                   <span className={`relative ${sort === s.key ? "text-white" : "text-mute"}`}>{s.label}</span>
                 </button>

@@ -29,7 +29,7 @@ const SORTS: Record<string, { label: string; fn: (a: Row, b: Row) => number }> =
 
 const RATINGS = [{ v: 0, l: "Toutes les notes" }, { v: 4.5, l: "4,5 ★ et plus" }, { v: 4, l: "4 ★ et plus" }, { v: 3, l: "3 ★ et plus" }, { v: -1, l: "Pas encore noté" }];
 
-const chip = (on: boolean) => `min-h-10 rounded-full border px-4 text-sm font-semibold transition ${on ? "border-transparent bg-ink text-night" : "border-white/15 text-ink2 hover:bg-white/5"}`;
+const chip = (on: boolean) => `min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition ${on ? "border-transparent bg-ink text-night" : "border-white/15 text-ink2 hover:bg-white/5"}`;
 
 /** Grille de jeux avec recherche, statuts, tri et filtres (plateforme, année, note, genre). */
 export default function GameBrowser({ rows: all, searchLabel = "Chercher un jeu", emptyText, removable = false, peekOwner }: { rows: Row[]; searchLabel?: string; emptyText?: string; removable?: boolean; peekOwner?: MiniProfile }) {
@@ -91,7 +91,7 @@ export default function GameBrowser({ rows: all, searchLabel = "Chercher un jeu"
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
+      <div className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filtrer par statut">
         {[{ key: "tous" as const, label: "Tous" }, ...STATUSES].map((s) => (
           <button key={s.key} aria-pressed={status === s.key} onClick={() => { setStatus(s.key); setLimit(PAGE); }} className={chip(status === s.key)}>
             {s.label} <span className="opacity-60">{count(s.key)}</span>

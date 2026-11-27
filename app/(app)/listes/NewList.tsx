@@ -1,6 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
+import Sheet from "@/components/Sheet";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { btnGhost, btnPrimary, input, label } from "@/components/ui";
@@ -36,16 +37,12 @@ export default function NewList({ className = btnPrimary }: { className?: string
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         Nouvelle liste
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onPointerDown={(e) => e.target === e.currentTarget && setOpen(false)} role="dialog" aria-modal="true" aria-label="Nouvelle liste">
-            <motion.form onSubmit={create} initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={{ type: "spring", stiffness: 320, damping: 30 }}
-              className="flex w-full max-w-lg flex-col gap-4 rounded-t-[28px] border border-white/10 bg-night2 p-5 sm:rounded-[28px] sm:p-6">
+      <Sheet open={open} onClose={() => setOpen(false)} label="Nouvelle liste" className="max-w-lg">
+        <form onSubmit={create} className="flex flex-col gap-4 overflow-y-auto p-5 pt-2 sm:p-6">
               <h2 className="text-2xl font-bold">Nouvelle liste</h2>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="lt" className={label}>Titre</label>
-                <input id="lt" autoFocus className={input} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Mon top 10 de tous les temps" />
+                <input id="lt" className={input} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Mon top 10 de tous les temps" />
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {IDEAS.map((i) => <button key={i} type="button" onClick={() => setTitle(i)} className="rounded-full border border-white/12 px-3 py-1 text-xs font-semibold text-ink2 hover:bg-white/5">{i}</button>)}
                 </div>
@@ -57,10 +54,8 @@ export default function NewList({ className = btnPrimary }: { className?: string
                 <button className={btnPrimary} disabled={busy || !title.trim()}>{busy ? "Création…" : "Créer et ajouter des jeux"}</button>
                 <button type="button" className={btnGhost} onClick={() => setOpen(false)}>Annuler</button>
               </div>
-            </motion.form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </form>
+      </Sheet>
     </>
   );
 }

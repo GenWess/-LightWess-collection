@@ -149,8 +149,8 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
 
   return (
     <div className="fade-up">
-      <div className="mb-4">
-        <p className="text-sm font-semibold text-mute">Ce soir on joue à quoi ?</p>
+      <div className="mb-3 sm:mb-4">
+        <p className="hidden text-sm font-semibold text-mute sm:block">Ce soir on joue à quoi ?</p>
         <h1 className="text-[clamp(28px,4vw,40px)] font-bold">Découvrir</h1>
       </div>
       {!hasFriends && (
@@ -160,7 +160,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
       )}
 
       <div className="flex flex-col items-center">
-        <div className="relative aspect-[330/480] w-full max-w-[370px] [perspective:1500px]">
+        <div className="relative aspect-[330/480] w-full max-w-[min(370px,calc((100svh-330px)*0.6875))] [perspective:1500px] lg:max-w-[370px]">
           {cards.slice(0, 3).reverse().map((c, ri, arr) => {
             const d = arr.length - 1 - ri;
             const isTop = d === 0;
@@ -188,7 +188,7 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
 
         {cards.length > 0 && (
           <>
-            <div className="mt-6 flex items-center gap-6">
+            <div className="mt-5 flex items-center gap-6 sm:mt-6">
               <button onClick={() => swipe("left")} aria-label="Pas pour moi" className="grid h-16 w-16 place-items-center rounded-full border border-white/15 bg-card text-no shadow-[0_12px_30px_-12px_#ff5c6c] transition active:scale-90">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
@@ -199,13 +199,13 @@ export default function SwipeDeck({ initial, ownedIgdb, hasFriends }: { initial:
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z" /></svg>
               </button>
             </div>
-            <p className="mt-3 text-center text-xs text-faint">Glisse la carte, ou touche-la pour voir les avis. Clavier : ← → et espace.</p>
+            <p className="mt-3 text-center text-xs text-faint"><span className="sm:hidden">Glisse la carte, ou touche-la pour voir les avis.</span><span className="hidden sm:inline">Glisse la carte, ou touche-la pour voir les avis. Clavier : ← → et espace.</span></p>
           </>
         )}
       </div>
 
       {toast && (
-        <div role="status" className={`fixed left-1/2 top-5 z-50 -translate-x-1/2 rounded-full px-5 py-3 text-sm font-semibold shadow-2xl fade-up ${toast.match ? "bg-violet text-white" : "bg-ink text-night"}`}>{toast.text}</div>
+        <div role="status" className={`fixed left-1/2 top-[calc(16px+env(safe-area-inset-top))] z-50 -translate-x-1/2 rounded-full px-5 py-3 text-sm font-semibold shadow-2xl fade-up ${toast.match ? "bg-violet text-white" : "bg-ink text-night"}`}>{toast.text}</div>
       )}
     </div>
   );

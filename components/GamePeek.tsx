@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { useRef, useState } from "react";
+import Sheet from "./Sheet";
 import Avatar from "./Avatar";
 import Cover from "./Cover";
 import GameTile from "./GameTile";
@@ -19,29 +20,22 @@ const STATUS_COLOR: Record<string, string> = { termine: "#8B5CF6", platine: "#FF
  * Fiche « avis » d'un joueur sur un jeu, ouverte directement sur son profil :
  * note, notes par catégorie, temps, dates, avis (spoilers floutés).
  */
-export function GamePeek({ row, owner, onClose }: { row: PeekRow | null; owner: MiniProfile; onClose: () => void }) {
-  useEffect(() => {
-    if (!row) return;
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    addEventListener("keydown", k);
-    return () => removeEventListener("keydown", k);
-  }, [row, onClose]);
+export function GamePeek({ row: current, owner, onClose }: { row: PeekRow | null; owner: MiniProfile; onClose: () => void }) {
+  // On garde la dernière fiche affichée pendant l'animation de fermeture.
+  const last = useRef<PeekRow | null>(current);
+  if (current) last.current = current;
+  const row = current ?? last.current;
 
   return (
-    <AnimatePresence>
-      {row && (
-        <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-sm sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          onPointerDown={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true" aria-label={`Avis de ${owner.handle} sur ${row.game.name}`}>
-          <motion.div initial={{ y: 80, opacity: 0, scale: 0.97 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 60, opacity: 0 }} transition={{ type: "spring", stiffness: 300, damping: 32 }}
-            className="relative flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[30px] border border-white/10 bg-night2 sm:rounded-[30px]">
-            {/* Bandeau du jeu */}
-            <div className="relative isolate shrink-0 overflow-hidden p-5 pb-4">
+    <Sheet open={!!current} onClose={onClose} label={row ? `Avis de ${owner.handle} sur ${row.game.name}` : "Avis"}
+      handleArea={row && (
+            <div className="relative isolate overflow-hidden px-5 pb-4 pt-2 sm:pt-5">
               {row.game.banner_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={row.game.banner_url} alt="" aria-hidden="true" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-50" />
+                <img src={row.game.banner_url} alt="" aria-hidden="true" draggable={false} className="absolute inset-0 -z-20 h-full w-full object-cover opacity-50" />
               )}
               <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-t from-night2 via-night2/80 to-night2/30" />
-              <button onClick={onClose} className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/40 text-ink2 backdrop-blur hover:text-ink" aria-label="Fermer">✕</button>
+              <button onClick={onClose} className="absolute right-4 top-3 grid h-10 w-10 place-items-center rounded-full bg-black/40 text-ink2 backdrop-blur hover:text-ink sm:top-4" aria-label="Fermer">✕</button>
               <div className="flex items-end gap-4">
                 <Cover game={row.game} className="w-24 shrink-0 shadow-2xl sm:w-28 [--cover-fs:22px]" />
                 <div className="min-w-0 pb-1">
@@ -53,8 +47,8 @@ export function GamePeek({ row, owner, onClose }: { row: PeekRow | null; owner: 
                 </div>
               </div>
             </div>
-
-            {/* L'avis */}
+      )}>
+      {row && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
               <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
                 <Avatar profile={owner} size={36} />
@@ -94,10 +88,8 @@ export function GamePeek({ row, owner, onClose }: { row: PeekRow | null; owner: 
                 <button onClick={onClose} className={btnGhost}>Fermer</button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
       )}
-    </AnimatePresence>
+    </Sheet>
   );
 }
 

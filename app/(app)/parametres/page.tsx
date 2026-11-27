@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSessionProfile } from "@/lib/supabase/server";
 import SettingsForm from "./SettingsForm";
 import SteamImport from "./SteamImport";
+import InstallApp from "@/components/InstallApp";
 
 export const metadata: Metadata = { title: "Paramètres" };
 
@@ -16,6 +17,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
       <SettingsForm profile={profile} />
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.3fr_1fr]">
         <SteamImport steamId={profile.steam_id} notice={steam} />
+        <InstallApp />
       </div>
     </div>
   );

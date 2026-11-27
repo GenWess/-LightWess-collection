@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Emblem, Logo } from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import Avatar from "@/components/Avatar";
 import NavLinks, { type NavLink } from "@/components/NavLinks";
 import InviteResume from "@/components/InviteResume";
-import MobileMenu from "@/components/MobileMenu";
+import MobileChrome from "@/components/MobileChrome";
 import { getSessionProfile } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -49,28 +49,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-night/80 px-4 py-3 backdrop-blur-xl lg:hidden">
-        <Link href="/accueil" aria-label="Lightwess Collection, accueil" className="flex items-center gap-2">
-          <Emblem className="h-8 w-8" />
-          <span className="font-display text-sm font-bold tracking-[0.14em]">LIGHTWESS</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          {profile.role === "admin" && <Link href="/admin" className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-mute">Modo</Link>}
-          <Link href="/amis" aria-label={`Amis${pending ? ` (${pending} demande${pending > 1 ? "s" : ""})` : ""}`} className="relative grid h-9 w-9 place-items-center rounded-full border border-white/15 text-ink2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5" /><path d="M19 8v6M16 11h6" /></svg>
-            {pending ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-violet px-1 text-[10px] font-bold text-white">{pending}</span> : null}
-          </Link>
-          <MobileMenu links={links} />
-        </div>
-      </header>
+      <MobileChrome links={links} pending={pending ?? 0} handle={profile.handle!} />
 
-      <main className="px-4 pb-28 pt-5 sm:px-8 lg:ml-64 lg:pb-12 lg:pt-8">
+      <main className="px-4 pb-[calc(104px+env(safe-area-inset-bottom))] pt-[calc(76px+env(safe-area-inset-top))] sm:px-8 lg:ml-64 lg:pb-12 lg:pt-8">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-line bg-night/90 px-1 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden" aria-label="Navigation">
-        <NavLinks links={links} variant="tab" />
-      </nav>
     </div>
   );
 }

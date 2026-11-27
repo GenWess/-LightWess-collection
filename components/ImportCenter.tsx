@@ -5,6 +5,7 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Cover from "./Cover";
+import Sheet from "./Sheet";
 import { btnGhost, btnPrimary, input } from "./ui";
 import { toast } from "@/lib/toast";
 import { STATUSES, type Status } from "@/lib/types";
@@ -28,21 +29,19 @@ export default function ImportCenter({ steamId, label = "Importer mes jeux", cla
       <motion.button whileTap={{ scale: 0.95 }} className={className} onClick={() => { setOpen(true); }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>{label}
       </motion.button>
-      <AnimatePresence>{open && <Dialog steamId={steamId} onClose={() => setOpen(false)} />}</AnimatePresence>
+      <Sheet open={open} onClose={() => setOpen(false)} label="Importer mes jeux" className="max-w-3xl h-[92dvh] sm:h-[86dvh]">
+        <Dialog steamId={steamId} onClose={() => setOpen(false)} />
+      </Sheet>
     </>
   );
 }
 
 function Dialog({ steamId, onClose }: { steamId: string | null; onClose: () => void }) {
   const [tab, setTab] = useState<(typeof PLATFORMS)[number]["key"]>("steam");
-  useEffect(() => { const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, [onClose]);
   const p = PLATFORMS.find((x) => x.key === tab)!;
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-sm sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      onPointerDown={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true" aria-label="Importer mes jeux">
-      <motion.div initial={{ y: 80, opacity: 0, scale: 0.97 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 60, opacity: 0 }} transition={{ type: "spring", stiffness: 300, damping: 32 }}
-        className="relative flex h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[30px] border border-white/10 bg-night2 sm:h-[86dvh] sm:rounded-[30px]">
+    <div className="relative flex min-h-0 flex-1 flex-col">
         <motion.div aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[70%] -translate-x-1/2 rounded-full blur-3xl" animate={{ background: p.color, opacity: 0.25 }} transition={{ duration: 0.6 }} />
         <div className="relative flex items-center justify-between gap-3 p-5 pb-3">
           <div><h2 className="text-2xl font-bold">Importer mes jeux</h2><p className="text-sm text-mute">Tu choisis ce que tu gardes. Aucun doublon, rien n&apos;est noté à ta place.</p></div>
@@ -65,8 +64,7 @@ function Dialog({ steamId, onClose }: { steamId: string | null; onClose: () => v
             </motion.div>
           </AnimatePresence>
         </div>
-      </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
