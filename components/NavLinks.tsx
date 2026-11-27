@@ -21,6 +21,9 @@ const ICONS = {
 
 export type NavLink = { href: string; label: string; short?: string; icon: keyof typeof ICONS; badge?: number; tab?: boolean };
 
+/** Pages principales préchargées en entier : y aller est instantané. */
+const WARM = ["/accueil", "/explorer", "/decouvrir", "/collection", "/u/"];
+
 export default function NavLinks({ links, variant }: { links: NavLink[]; variant: "side" | "tab" }) {
   const path = usePathname();
   const shown = variant === "tab" ? links.filter((l) => l.tab) : links;
@@ -30,7 +33,7 @@ export default function NavLinks({ links, variant }: { links: NavLink[]; variant
         const on = path === l.href || path.startsWith(l.href + "/");
         const badge = l.badge ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-violet px-1.5 text-[11px] font-bold text-white">{l.badge}</span> : null;
         return variant === "side" ? (
-          <Link key={l.href} href={l.href} aria-current={on ? "page" : undefined}
+          <Link key={l.href} href={l.href} prefetch={WARM.some((w) => l.href.startsWith(w)) ? true : undefined} aria-current={on ? "page" : undefined}
             className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 font-semibold transition ${on ? "bg-card2 text-ink [&_svg]:text-violet-hi" : "text-mute hover:bg-card hover:text-ink"}`}>
             {ICONS[l.icon]}<span className="flex-1">{l.label}</span>{badge}
           </Link>

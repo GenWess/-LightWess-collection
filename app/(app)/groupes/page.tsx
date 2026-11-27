@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Groupes" };
 
 export default async function Page() {
   const { supabase, user } = await getSessionProfile();
-  const { data: mine } = await supabase.from("group_members").select("role, group:groups(id,name,description,color,created_at)").eq("user_id", user!.id);
+  const { data: mine } = await supabase.from("group_members").select("role, group:groups(*)").eq("user_id", user!.id);
   const groups = ((mine ?? []) as unknown as { role: string; group: Omit<GroupCard, "role" | "members" | "avatars"> }[]).filter((m) => m.group);
   const ids = groups.map((g) => g.group.id);
   const { data: members } = ids.length

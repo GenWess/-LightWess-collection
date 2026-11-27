@@ -14,12 +14,14 @@ import { btnDanger, btnGhost } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { genreFr, type Game, type MiniProfile, type UserGame } from "@/lib/types";
+import GroupChat, { type Msg } from "./GroupChat";
+import { AddMembers, GroupEdit } from "./GroupAdmin";
 
 type Row = Pick<UserGame, "user_id" | "status" | "rating" | "scores" | "playtime_hours" | "finished_on" | "updated_at"> & { game: Pick<Game, "id" | "name" | "cover_url" | "banner_url" | "dominant_color" | "genres" | "release_year"> };
 type Member = { role: "owner" | "admin" | "member"; joined_at: string; profile: MiniProfile };
 export type GroupData = {
-  group: { id: string; name: string; description: string | null; color: string; owner_id: string; invite_code: string; created_at: string };
-  meId: string; members: Member[]; rows: Row[];
+  group: { id: string; name: string; description: string | null; color: string; owner_id: string; invite_code: string; created_at: string; avatar_url?: string | null; banner_url?: string | null; banner_pos_y?: number | null };
+  meId: string; members: Member[]; rows: Row[]; messages: Msg[]; addable: MiniProfile[];
 };
 
 const METRICS = {
@@ -44,6 +46,8 @@ export default function GroupView({ data }: { data: GroupData }) {
   const { group, meId, members } = data;
   const [metric, setMetric] = useState<MetricKey>("finis");
   const [tab, setTab] = useState<"commun" | "top" | "activite">("commun");
+  const [main, setMain] = useState<"discussion" | "classement" | "jeux" | "membres">("discussion");
+  const [editing, setEditing] = useState(false);
   const myRole = members.find((m) => m.profile.id === meId)?.role ?? "member";
   const byUser = useMemo(() => {
     const m = new Map<string, Row[]>();
@@ -107,11 +111,17 @@ export default function GroupView({ data }: { data: GroupData }) {
   return (
     <div>
       {/* En-tête */}
-      <section className="relative overflow-hidden rounded-[32px] border border-line p-6 sm:p-8" style={{ background: `radial-gradient(120% 140% at 0% 0%, ${group.color}55, transparent 60%), linear-gradient(160deg, #1a1426, #0b0a10)` }}>
+      <section className="relative isolate overflow-hidden rounded-[32px] border border-line p-5 sm:p-8" style={{ background: `radial-gradient(120% 140% at 0% 0%, ${group.color}55, transparent 60%), linear-gradient(160deg, #1a1426, #0b0a10)` }}>
+        {group.banner_url && (
+          <>
+            <div aria-hidden="true" className="absolute inset-0 -z-10 bg-cover" style={{ backgroundImage: `url("${group.banner_url}")`, backgroundPosition: `50% ${group.banner_pos_y ?? 50}%` }} />
+            <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-t from-night via-night/75 to-night/20" />
+          </>
+        )}
         <motion.div aria-hidden="true" className="absolute -right-20 -top-20 h-72 w-72 rounded-full blur-3xl" style={{ background: group.color }} animate={{ opacity: [0.25, 0.45, 0.25], scale: [1, 1.15, 1] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
         <div className="relative flex flex-wrap items-end gap-5">
           <motion.span initial={{ scale: 0.6, rotate: -12 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 220, damping: 14 }}
-            className="grid h-24 w-24 place-items-center rounded-[28px] font-display text-5xl font-bold text-white shadow-[0_20px_50px_-15px_var(--glow)]" style={{ background: `linear-gradient(135deg, ${group.color}, #1a1426)` }}>{group.name[0].toUpperCase()}</motion.span>
+            className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-[28px] bg-cover bg-center font-display text-5xl font-bold text-white shadow-[0_20px_50px_-15px_var(--glow)] ring-4 ring-night/60" style={{ background: group.avatar_url ? undefined : `linear-gradient(135deg, ${group.color}, #1a1426)`, backgroundImage: group.avatar_url ? `url("${group.avatar_url}")` : undefined }}>{group.avatar_url ? null : group.name[0].toUpperCase()}</motion.span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink2">Groupe · {members.length} membre{members.length > 1 ? "s" : ""}</p>
             <h1 className="text-balance text-[clamp(30px,5vw,52px)] font-bold leading-none">{group.name}</h1>
@@ -124,15 +134,54 @@ export default function GroupView({ data }: { data: GroupData }) {
               ))}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2"><CopyLink code={group.invite_code} label="Inviter des amis" /></div>
+          <div className="flex flex-wrap gap-2">
+            <button className={`${btnGhost} backdrop-blur`} onClick={() => setMain("membres")}>Ajouter des amis</button>
+            <CopyLink code={group.invite_code} label="Lien d'invitation" />
+            {(myRole === "owner" || myRole === "admin") && <button className={`${btnGhost} backdrop-blur`} onClick={() => setEditing(true)}>Modifier</button>}
+          </div>
         </div>
-        <div className="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="relative mt-5 grid grid-cols-4 gap-2 sm:mt-6 sm:gap-3">
           {([[totals.jeux, "jeux à eux tous"], [totals.finis, "jeux terminés"], [totals.heures, "heures de jeu"], [totals.communs, "jeux en commun"]] as const).map(([v, l]) => (
-            <div key={l} className="rounded-2xl border border-white/10 bg-black/25 p-4 backdrop-blur"><b className="block font-display text-3xl leading-none"><CountUp value={v} /></b><span className="text-xs text-mute">{l}</span></div>
+            <div key={l} className="rounded-2xl border border-white/10 bg-black/25 p-2.5 backdrop-blur sm:p-4"><b className="block font-display text-xl leading-none sm:text-3xl"><CountUp value={v} /></b><span className="block text-[10px] leading-tight text-mute sm:text-xs">{l}</span></div>
           ))}
         </div>
       </section>
 
+      {/* Onglets principaux */}
+      <LayoutGroup id="gmain">
+        <div className="no-scrollbar -mx-4 mt-5 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Sections du groupe">
+          {([["discussion", "Discussion"], ["classement", "Classement"], ["jeux", "Jeux"], ["membres", `Membres (${members.length})`]] as const).map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={main === k} onClick={() => setMain(k)} className="relative min-h-11 shrink-0 rounded-full px-5 text-sm font-semibold">
+              {main === k && <motion.span layoutId="gmain-pill" className="absolute inset-0 rounded-full bg-ink" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+              <span className={`relative ${main === k ? "text-night" : "text-mute"}`}>{l}</span>
+            </button>
+          ))}
+        </div>
+      </LayoutGroup>
+
+      {main === "discussion" && (
+        <div className="mt-5 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+          <GroupChat groupId={group.id} meId={meId} members={members.map((m) => m.profile)} canModerate={myRole === "owner" || myRole === "admin"} initial={data.messages} />
+          <section className={`${card} lg:max-h-[min(68dvh,640px)] lg:overflow-y-auto`}>
+            <h2 className="mb-3 text-lg font-bold">Actualités du groupe</h2>
+            {activity.length ? (
+              <ul className="-mx-2 flex flex-col">
+                {activity.slice(0, 15).map((r) => { const p = prof.get(r.user_id); return p ? (
+                  <li key={`${r.user_id}-${r.game.id}`}>
+                    <Link href={`/jeu/${r.game.id}?de=${p.handle}`} className="flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-white/5">
+                      <span className="relative shrink-0"><Cover game={r.game} className="w-9 rounded-md [--cover-fs:9px]" /><span className="absolute -bottom-1 -right-1.5"><Avatar profile={p} size={20} /></span></span>
+                      <span className="min-w-0 flex-1 text-sm leading-snug"><b>{p.display_name || p.handle}</b> <span className="text-mute">{VERB[r.status]}</span> <b>{r.game.name}</b>{r.rating != null && <span className="text-[#FFD45C]"> · {Number(r.rating).toFixed(1)}★</span>}</span>
+                      <span className="shrink-0 text-xs text-faint">{ago(r.updated_at)}</span>
+                    </Link>
+                  </li>
+                ) : null; })}
+              </ul>
+            ) : <p className="text-mute">Rien pour l&apos;instant.</p>}
+          </section>
+        </div>
+      )}
+
+      {main === "classement" && (
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_1fr]">
         {/* Comparaison interactive */}
         <section className={card}>
@@ -168,8 +217,11 @@ export default function GroupView({ data }: { data: GroupData }) {
         </div>
       </div>
 
+      )}
+
       {/* Onglets jeux */}
-      <section className="mt-6">
+      {main === "jeux" && (
+      <section className="mt-5">
         <LayoutGroup id="tabs">
           <div className="mb-4 flex gap-1 overflow-x-auto" role="tablist">
             {([["commun", `Jeux en commun (${common.length})`], ["top", "Les mieux notés"], ["activite", "Activité récente"]] as const).map(([k, l]) => (
@@ -229,8 +281,12 @@ export default function GroupView({ data }: { data: GroupData }) {
         </AnimatePresence>
       </section>
 
+      )}
+
       {/* Membres */}
-      <section className={`${card} mt-6`}>
+      {main === "membres" && (
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_1fr]">
+      <section className={card}>
         <h2 className="mb-2 text-lg font-bold">Membres</h2>
         <ul className="grid gap-1 sm:grid-cols-2">
           {members.map((m) => (
@@ -248,6 +304,11 @@ export default function GroupView({ data }: { data: GroupData }) {
           {myRole === "owner" && <ConfirmDelete onConfirm={removeGroup} />}
         </div>
       </section>
+      <AddMembers groupId={group.id} friends={data.addable} canAddAnyone={myRole === "owner" || myRole === "admin"} inviteCode={group.invite_code} />
+      </div>
+      )}
+
+      <GroupEdit open={editing} onClose={() => setEditing(false)} group={group} meId={meId} />
     </div>
   );
 }

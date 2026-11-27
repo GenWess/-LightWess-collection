@@ -48,9 +48,13 @@ export default async function ProfilePage({ params }: Props) {
       .or(`and(requester_id.eq.${user!.id},addressee_id.eq.${p.id}),and(requester_id.eq.${p.id},addressee_id.eq.${user!.id})`).maybeSingle(),
   ]);
 
-  const { data: rowsData } = canView
-    ? await supabase.from("user_games").select("*, game:games(*)").eq("user_id", p.id).order("updated_at", { ascending: false })
-    : { data: [] };
+  // Tout ce dont la page a besoin, chargé en même temps (page plus rapide).
+  const [{ data: rowsData }, { data: mineData }, { count: listCount }, { data: lb }] = await Promise.all([
+    canView ? supabase.from("user_games").select("*, game:games(*)").eq("user_id", p.id).order("updated_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    !isMe && user && canView ? supabase.from("user_games").select("game_id").eq("user_id", user.id) : Promise.resolve({ data: [] as { game_id: string }[] }),
+    supabase.from("lists").select("id", { count: "exact", head: true }).eq("user_id", p.id),
+    supabase.rpc("leaderboard"),
+  ]);
   const rows = await withFixedCovers(supabase, (rowsData ?? []) as (UserGame & { game: Game })[]);
 
   const done = rows.filter((r) => r.status === "termine" || r.status === "platine");
@@ -60,9 +64,6 @@ export default async function ProfilePage({ params }: Props) {
   const accent = p.accent_color || "#8b5cf6";
 
   // Jeux conseillés : ses jeux les mieux notés (hors top 5). Pour un visiteur, on enlève ceux qu'il a déjà.
-  const { data: mineData } = !isMe && user && rows.length
-    ? await supabase.from("user_games").select("game_id").eq("user_id", user.id)
-    : { data: [] };
   const already = new Set((mineData ?? []).map((m) => m.game_id as string));
   const picks = rows
     .filter((r) => r.rating != null && Number(r.rating) >= 3.5 && r.top_rank == null && !already.has(r.game_id))
@@ -74,7 +75,6 @@ export default async function ProfilePage({ params }: Props) {
     .sort((a, b) => Number(a.rating) - Number(b.rating) || (b.finished_on ?? "").localeCompare(a.finished_on ?? ""))
     .slice(0, 5);
   const name = p.display_name || `@${p.handle}`;
-  const { count: listCount } = await supabase.from("lists").select("id", { count: "exact", head: true }).eq("user_id", p.id);
   // Sur le profil d'un ami, cliquer un jeu ouvre SON avis (?de=pseudo).
   const fromQ = isMe ? undefined : p.handle ?? undefined;
   const deQ = fromQ ? `?de=${encodeURIComponent(fromQ)}` : "";
@@ -83,7 +83,6 @@ export default async function ProfilePage({ params }: Props) {
   const tile = (r: UserGame & { game: Game }, key?: string) => (isMe ? <GameTile key={key} game={r.game} entry={r} /> : <PeekTile key={key} row={r} owner={owner} />);
 
   // Badges et pseudo coloré, d'après le classement du site.
-  const { data: lb } = await supabase.rpc("leaderboard");
   const { badges, nameTier } = badgesFor(p.id, normalize(lb ?? []));
 
   // Petite bulle « joue à… / ensuite… ».

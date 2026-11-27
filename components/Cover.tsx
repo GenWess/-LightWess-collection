@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { colorFromText } from "@/lib/types";
 
 type G = { name: string; cover_url: string | null; banner_url?: string | null; dominant_color?: string | null };
@@ -14,6 +14,17 @@ export default function Cover({ game, className = "", sizes, priority, fill, chi
   const [i, setI] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const src = sources[i];
+  const ref = useRef<HTMLImageElement>(null);
+
+  // L'image a pu finir de charger AVANT que la page soit prête (elle était déjà en cache) :
+  // dans ce cas l'événement « chargé » est perdu et la jaquette restait invisible jusqu'au rechargement.
+  // On vérifie donc tout de suite si elle est déjà là.
+  useEffect(() => {
+    const img = ref.current;
+    if (!img || !img.complete) return;
+    if (img.naturalWidth > 0) setLoaded(true);
+    else setI((n) => n + 1);
+  }, [src]);
   const c = game.dominant_color || colorFromText(game.name);
   const long = Math.max(...game.name.split(/\s+/).map((w) => w.length));
 
@@ -27,6 +38,7 @@ export default function Cover({ game, className = "", sizes, priority, fill, chi
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={src}
+          ref={ref}
           src={src}
           alt=""
           sizes={sizes}

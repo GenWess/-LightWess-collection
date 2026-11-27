@@ -112,3 +112,51 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.trending_games(integer, integer) from public, anon;
 grant execute on function public.trending_games(integer, integer) to authenticated;
+
+-- 5. GROUPES : photo, bannière, discussion, ajout direct de membres.
+alter table public.groups add column if not exists avatar_url text;
+alter table public.groups add column if not exists banner_url text;
+alter table public.groups add column if not exists banner_pos_y smallint not null default 50;
+
+create table if not exists public.group_messages (
+  id         uuid primary key default gen_random_uuid(),
+  group_id   uuid not null references public.groups(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  body       text check (char_length(body) <= 2000),
+  gif_url    text check (gif_url is null or (gif_url ~ '^https://' and char_length(gif_url) <= 1000)),
+  created_at timestamptz not null default now(),
+  check (coalesce(char_length(trim(body)), 0) > 0 or gif_url is not null)
+);
+create index if not exists group_messages_idx on public.group_messages (group_id, created_at desc);
+alter table public.group_messages enable row level security;
+grant select, insert, delete on public.group_messages to authenticated;
+
+drop policy if exists gmsg_read on public.group_messages;
+drop policy if exists gmsg_insert on public.group_messages;
+drop policy if exists gmsg_delete on public.group_messages;
+create policy gmsg_read   on public.group_messages for select to authenticated using (is_group_member(group_id) or is_admin());
+create policy gmsg_insert on public.group_messages for insert to authenticated
+  with check (user_id = auth.uid() and is_group_member(group_id) and is_active_user());
+create policy gmsg_delete on public.group_messages for delete to authenticated
+  using (user_id = auth.uid() or coalesce(group_role(group_id), '') in ('owner', 'admin') or is_admin());
+
+-- Messages en direct (sans recharger la page).
+do $$ begin
+  alter publication supabase_realtime add table public.group_messages;
+exception when duplicate_object then null; when undefined_object then null; end $$;
+
+-- Ajouter quelqu'un directement : un membre peut ajouter ses amis ; le créateur et les admins peuvent ajouter n'importe quel @pseudo.
+create or replace function public.add_group_member(gid uuid, p_handle text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare target uuid; my_role text := group_role(gid);
+begin
+  if my_role is null then raise exception 'Tu ne fais pas partie de ce groupe'; end if;
+  select id into target from profiles where handle = lower(trim(both '@' from trim(p_handle))) and not is_banned;
+  if target is null then raise exception 'Aucun joueur avec ce pseudo'; end if;
+  if my_role not in ('owner', 'admin') and not are_friends(auth.uid(), target) then
+    raise exception 'Ajoute-le d''abord en ami (ou demande au créateur du groupe)';
+  end if;
+  insert into group_members (group_id, user_id, role) values (gid, target, 'member') on conflict (group_id, user_id) do nothing;
+  return target;
+end $$;
+grant execute on function public.add_group_member(uuid, text) to authenticated;

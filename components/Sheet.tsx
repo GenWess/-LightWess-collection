@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useDragControls } from "motion/react";
 import { useEffect } from "react";
+import Portal from "./Portal";
 
 /**
  * Fenêtre commune du site.
@@ -29,6 +30,7 @@ export default function Sheet({ open, onClose, label, children, className = "max
   const start = (e: React.PointerEvent) => { if (e.pointerType !== "mouse") controls.start(e); };
 
   return (
+    <Portal>
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-[6px] sm:items-center sm:p-6"
@@ -51,5 +53,6 @@ export default function Sheet({ open, onClose, label, children, className = "max
         </motion.div>
       )}
     </AnimatePresence>
+    </Portal>
   );
 }

@@ -77,7 +77,7 @@ export default function MobileChrome({ links, pending, handle }: { links: NavLin
           <div className="mx-auto flex h-[66px] max-w-md items-center justify-around rounded-[26px] border border-white/10 bg-[#15121d]/95 px-1.5 shadow-[0_18px_40px_-12px_rgba(0,0,0,.85)] backdrop-blur-2xl">
             {TABS.map((t, i) =>
               t ? (
-                <Link key={t.href} href={href(t.href)} onClick={buzz} aria-current={isOn(t.href) ? "page" : undefined}
+                <Link key={t.href} href={href(t.href)} prefetch onClick={buzz} aria-current={isOn(t.href) ? "page" : undefined}
                   className={`relative flex h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[10.5px] font-semibold transition-colors active:scale-95 ${isOn(t.href) ? "text-ink" : "text-faint"}`}>
                   {isOn(t.href) && <motion.span layoutId="mtab-pill" className="absolute inset-x-1 inset-y-0 rounded-[20px] bg-white/[.08]" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
                   <span className={`relative transition-transform ${isOn(t.href) ? "-translate-y-px text-violet-hi" : ""}`}>{t.icon}</span>

@@ -41,7 +41,9 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && isProtected) return redirect("/connexion");
 
-  if (user && (isProtected || AUTH_PAGES.includes(path) || path === "/")) {
+  // Sur les pages de l'appli, la mise en page vérifie déjà le @pseudo : on évite ici une requête de plus
+  // à chaque changement de page (navigation plus rapide).
+  if (user && (path === "/onboarding" || AUTH_PAGES.includes(path) || path === "/")) {
     const { data: profile } = await supabase.from("profiles").select("handle").eq("id", user.id).maybeSingle();
     const handle = profile?.handle as string | null | undefined;
     if (!handle && path !== "/onboarding") return redirect("/onboarding");
